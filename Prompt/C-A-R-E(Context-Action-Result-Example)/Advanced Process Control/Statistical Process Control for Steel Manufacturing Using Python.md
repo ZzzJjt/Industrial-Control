@@ -5,6 +5,7 @@ Develop Python code to implement a statistical process control (SPC) system for 
 Simulate the steel manufacturing process, and demonstrate how SPC can be used to maintain high-quality production standards while minimizing waste and process variability.
 
 **C-A-R-E:**
+
 🟥 C（Context）
 
 Steel manufacturing processes are sensitive to variability in key quality metrics such as tensile strength, thickness, and surface finish. Without real-time monitoring and analysis, these variations can lead to product defects, increased waste, and inconsistent quality, making it difficult to meet industry standards and customer expectations.
