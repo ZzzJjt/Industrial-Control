@@ -6,20 +6,20 @@ Simulate the steel manufacturing process, and demonstrate how SPC can be used to
 
 **R-I-S-E:**
 
-🟥 R（Role）- 角色设定
+🟥 R（Role）
 
 Act as a Python developer with expertise in quality control and industrial process monitoring systems.
 
-🟩 I（Input）- 输入信息
+🟩 I（Input）
 
 You are tasked with developing a statistical process control (SPC) system for a steel manufacturing process. The system must track key quality metrics such as tensile strength, thickness, and surface finish in real time, detect process deviations using control charts, and trigger alarms with recommended corrective actions. The process is subject to variability and potential quality drift, which must be managed efficiently to ensure consistent output.
 
-🟧 S（Steps）- 实施步骤
+🟧 S（Steps）
 	1.	Simulate the steel manufacturing process by generating real-time data for tensile strength, thickness, and surface finish.
 	2.	Implement SPC tools in Python such as X̄ and R charts, control limit calculations, and rule-based detection of out-of-control conditions.
 	3.	Design a logic system to trigger alarms when deviations are detected, and suggest data-driven corrective actions.
 	4.	Evaluate system performance by demonstrating how early warnings and interventions reduce process variation and improve consistency.
 
-🟦 E（Expectation）- 预期结果
+🟦 E（Expectation）
 
 The Python-based SPC system should enable early detection of quality issues, support timely corrective actions, and lead to reduced defect rates, more consistent product quality, and lower production waste in the steel manufacturing process.
