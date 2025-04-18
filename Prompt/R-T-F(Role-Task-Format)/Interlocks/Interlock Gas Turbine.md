@@ -14,3 +14,43 @@ Develop a complete list of interlocks required for a gas turbine in a power plan
 	10.	Emergency Stop Interlock: Provide a manual emergency stop button that immediately shuts down the turbine and isolates fuel supply in case of any critical malfunction.
 
 These interlocks play a crucial role in protecting the gas turbine from overheating, overpressure, and mechanical failure, ensuring safe and efficient operation in a power plant environment. Discuss how these interlocks are integrated into the overall turbine control system and their importance in maintaining safety and operational integrity.
+
+**R-T-F:**
+
+🟥 R (Role) – Your Role
+
+Act as a power plant automation engineer tasked with designing the interlock protection system for a gas turbine to ensure safe and reliable operation.
+
+⸻
+
+🟩 T (Task) – What You Need to Do
+
+Create a complete list of interlocks for the gas turbine, defining the critical safety conditions and the corresponding automatic or manual responses. For each interlock, specify:
+	•	The monitored parameter (e.g., temperature, pressure, speed)
+	•	The threshold condition that triggers the interlock
+	•	The protective action (e.g., shutdown, valve closure, emergency stop)
+
+The interlocks should include conditions such as:
+	1.	Overtemperature
+	2.	Overspeed
+	3.	Overpressure
+	4.	Low lubrication pressure
+	5.	High vibration
+	6.	Flame failure
+	7.	Low fuel gas pressure
+	8.	Low cooling water flow
+	9.	Compressor surge
+	10.	Manual emergency stop
+
+After listing the interlocks, explain how they are integrated into the gas turbine control system and how each one contributes to system safety.
+
+⸻
+
+🟧 F (Format) – Expected Output
+
+Provide the following deliverables:
+	•	A structured table or list of the 10 interlocks, including condition, threshold, and action
+	•	A written explanation of their integration into PLC or DCS systems (e.g., using IEC 61131-3 logic)
+	•	A summary of the importance of each interlock in preventing mechanical failure, ensuring personnel safety, and maintaining continuous operation
+
+Optionally, include ST code snippets or logic blocks demonstrating how individual interlocks would be implemented programmatically.
