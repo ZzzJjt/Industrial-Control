@@ -6,3 +6,25 @@ Provide the implementation of the MotorInterlock function block in IEC 61131-3 S
 
 Discuss the role of motor interlocks in industrial safety and how this logic prevents premature or unsafe motor operation.
 
+**T-A-G:**
+
+🟥 T (Task) – What You Need to Do
+
+Design and implement a Motor Interlock using a Function Block Diagram and IEC 61131-3 Structured Text. The system must prevent a motor from starting when other associated equipment is still running.
+
+⸻
+
+🟩 A (Action) – How to Do It
+	1.	Create a function block named MotorInterlock with Boolean inputs such as Equipment1Running, Equipment2Running, etc.
+	2.	Implement interlock logic that evaluates whether all connected equipment is stopped:
+
+ AllowStart := NOT Equipment1Running AND NOT Equipment2Running AND NOT Equipment3Running;
+ 	3.	Output a Boolean signal AllowStart that is TRUE only when all input equipment statuses are FALSE
+	4.	Use this output to enable or block the motor start command
+	5.	Optionally, display or log interlock conditions on an HMI or SCADA system
+
+⸻
+
+🟦 G (Goal) – What You Want to Achieve
+
+Deliver a safe and modular interlock solution that ensures the motor can only be started under safe conditions—specifically, when all monitored equipment is inactive. This improves process coordination, prevents mechanical conflict, and promotes industrial safety compliance.
