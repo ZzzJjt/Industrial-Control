@@ -52,3 +52,7 @@ The result is a modular and reusable function block that:
 🟦 E (Example) – A Practical Use Case
 
 Imagine a sensor that detects metal parts passing on a conveyor belt. If the expected average rate is 4 parts/min (λ = 4), and 2 parts are observed in one minute (K = 2), this block calculates the probability of that event:
+
+// INPUT: Lambda := 4.0; K := 2
+// OUTPUT: Probability ≈ 0.1465
+
