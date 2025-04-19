@@ -64,3 +64,44 @@ This program will:
 ⸻
 
 🟦 E (Example) – A Practical Implementation Snippet
+
+IF EmergencyStop THEN
+    CoffeeValve := FALSE;
+    MilkValve := FALSE;
+    Mixer := FALSE;
+    OutputValve := FALSE;
+    State := 0;
+ELSE
+    CASE State OF
+        0: // Idle
+            IF Start THEN
+                IF CoffeeMilk THEN
+                    CoffeeValve := TRUE;
+                    MilkValve := TRUE;
+                    State := 1;
+                ELSIF CoffeeOnly THEN
+                    CoffeeValve := TRUE;
+                    State := 1;
+                END_IF;
+            END_IF;
+
+        1: // Filling
+            IF MixerLevelFull THEN
+                CoffeeValve := FALSE;
+                MilkValve := FALSE;
+                Mixer := TRUE;
+                MixTimer(IN := TRUE, PT := T#4s);
+                State := 2;
+            END_IF;
+
+        2: // Mixing
+            IF MixTimer.Q THEN
+                Mixer := FALSE;
+                OutputValve := TRUE;
+                State := 3;
+            END_IF;
+
+        3: // Dispensing
+            // Optionally reset after dispensing
+    END_CASE;
+END_IF;
