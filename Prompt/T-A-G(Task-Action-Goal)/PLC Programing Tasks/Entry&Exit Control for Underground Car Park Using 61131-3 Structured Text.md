@@ -25,4 +25,42 @@ The entry and exit of the underground car park is controlled by a single lane pa
 	•	When the passage is clear, the green lights will turn ON again, allowing cars to enter or exit freely.
 	•	Initially, the PLC should set the green lights ON and the red lights OFF to indicate free movement.
 
+**T-A-G:**
 
+🟥 T (Task) – What You Need to Do
+
+Develop a Structured Text (ST) program using IEC 61131-3 to control entry and exit traffic lights for a single-lane underground car park shared by the ground floor and basement. The system must prevent cars from entering the passage at both ends simultaneously by coordinating sensor inputs and traffic light outputs.
+
+⸻
+
+🟩 A (Action) – How to Do It
+	1.	Monitor Sensor and Memory Flags:
+	•	X1: Detects car passage at the ground floor
+	•	X2: Detects car passage at the basement
+	•	M1–M4: One-scan memory flags indicating car direction through X1 or X2
+	•	M20: Set when a car is in the passage from the ground floor
+	•	M30: Set when a car is in the passage from the basement
+	2.	Control Lights Based on Passage Occupancy:
+	•	If M1 or M4 is TRUE → M20 := TRUE (car from ground floor)
+	•	If M2 or M3 is TRUE → M30 := TRUE (car from basement)
+	•	If M3 or M4 is TRUE → M20 := FALSE (car from ground floor has exited)
+	•	If M1 or M2 is TRUE → M30 := FALSE (car from basement has exited)
+	3.	Update Output Lights:
+	•	If M20 or M30 is TRUE:
+	•	Y1 := TRUE (red light ON), Y2 := FALSE (green light OFF)
+	•	If both are FALSE (no cars in passage):
+	•	Y1 := FALSE, Y2 := TRUE (allow traffic)
+	4.	Initialize System:
+	•	On power-up, allow free movement:
+	•	Y1 := FALSE, Y2 := TRUE
+
+⸻
+
+🟦 G (Goal) – What You Want to Achieve
+
+Deliver a reliable traffic light control program that:
+	•	Ensures only one vehicle uses the passage at a time
+	•	Prevents simultaneous entry from both directions
+	•	Automatically resets lights once the passage is clear
+	•	Starts with green lights enabled for free traffic flow
+	•	Is suitable for real-time deployment in a shared underground parking system
