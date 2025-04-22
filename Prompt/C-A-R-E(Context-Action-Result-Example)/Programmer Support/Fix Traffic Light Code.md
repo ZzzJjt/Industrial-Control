@@ -66,3 +66,62 @@ END_WHILE
 
 // Set the traffic lights based on the variables PROCEDURE SetTrafficLights( green: BOOL; yellow: BOOL; red: BOOL ) // Code to set the traffic lights goes here END_PROCEDURE
 
+**C-A-R-E:**
+
+🟥 C (Context) – The Problem Setting
+
+You are working on a 61131-3 Structured Text program that controls a traffic light system. The system must handle normal operation, pedestrian crossing requests, and emergency vehicle priority. However, the current implementation includes logical errors and improper PLC programming constructs such as infinite loops (WHILE TRUE DO) and WAIT UNTIL, which are not compliant with standard cyclic execution in PLCs.
+
+⸻
+
+🟩 A (Action) – What Needs to Be Done
+
+To fix the program and make it functionally correct and IEC-compliant:
+	•	Replace the infinite loop (WHILE TRUE DO) with cyclic state-driven logic
+	•	Remove WAIT UNTIL and instead use state variables and timers to manage transitions
+	•	Correctly handle the TON timer without reinitializing it in the same scan cycle
+	•	Introduce a state machine with named states like NORMAL, TO_YELLOW, PEDESTRIAN_WAIT, EMERGENCY_OVERRIDE, etc.
+	•	Ensure only one mode is active at a time, with clean transitions and recovery back to normal
+
+⸻
+
+🟨 R (Result) – What Will Be Achieved
+
+After refactoring, the program will:
+	•	Safely control traffic lights with smooth transitions and prioritized logic
+	•	Correctly respond to emergency vehicles by overriding the normal light cycle
+	•	Allow pedestrians to cross safely, without logic blocking or collisions
+	•	Be cyclic-scan compatible with clean logic separation between input reading, processing, and output setting
+	•	Improve readability, maintainability, and extendability for future features (e.g., vehicle counting or night modes)
+
+⸻
+
+🟦 E (Example) – Refactored Logic Overview
+
+Instead of:
+WHILE TRUE DO
+    WAIT UNTIL ...
+    timer(IN := FALSE);
+END_WHILE
+
+Use something like:
+
+CASE state OF
+    NORMAL:
+        IF pedestrianTrig.Q THEN
+            state := PEDESTRIAN_WAIT;
+        ELSIF emergencySensor THEN
+            state := EMERGENCY;
+        END_IF
+
+    PEDESTRIAN_WAIT:
+        redLight := TRUE;
+        pedestrianTimer(IN := TRUE);
+        IF pedestrianTimer.Q THEN
+            state := TO_GREEN;
+        END_IF
+
+    EMERGENCY:
+        greenLight := TRUE;
+        // Hold this state until emergencySensor = FALSE
+END_CASE
