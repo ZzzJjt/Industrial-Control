@@ -59,3 +59,36 @@ END_IF
 
 END_PROGRAM
 
+**B-A-B:**
+
+🟥 Before – The Context or Need
+
+You have a Structured Text (IEC 61131-3) PLC program named UreaReactionControl, which manages a two-step urea synthesis process. The code controls the opening of ammonia and CO₂ valves, monitors reactor pressure and temperature, and times the reaction. However, this logic is currently undocumented, making it harder for developers, maintainers, or auditors to understand and work with the process flow.
+
+⸻
+
+🟩 After – The Desired Output
+
+Generate clear, developer-oriented documentation for the UreaReactionControl program. The documentation should explain:
+	•	Purpose of the program
+	•	Function of each variable (inputs, outputs, internal, and parameters)
+	•	Step-by-step description of the process flow:
+	•	Step 1: Loading raw materials
+	•	Step 2: Monitoring and controlling the reaction
+	•	Completion: Finalizing the reaction
+	•	Conditions under which valves are opened or closed
+	•	Timing and tolerance logic for pressure and temperature
+	•	Use of CURRENT_TIME for reaction timing
+
+This documentation should enable new developers or automation engineers to quickly grasp the code’s intent and implementation.
+
+⸻
+
+🟦 Bridge – How to Get There
+
+Use the provided source code and:
+	1.	Describe each code section (inputs, outputs, internal variables, constants)
+	2.	Explain the logic in a narrative form: What happens first? What triggers transitions?
+	3.	Include conditions and logic branches, like how temperature and pressure are validated
+	4.	Highlight safety logic like valve shutoff and reaction completion
+	5.	Format the result in a developer manual style, optionally including a table for parameters and a step flow diagram (if needed)
