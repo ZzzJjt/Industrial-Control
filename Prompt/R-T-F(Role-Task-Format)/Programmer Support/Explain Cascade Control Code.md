@@ -50,3 +50,46 @@ SetValvePosition(OP2);
 END_METHOD
 
 END_PROGRAM
+
+**R-T-F:**
+
+🟥 R (Role) – Your Role
+
+You are a PLC control engineer reviewing and explaining a cascade control implementation written in IEC 61131-3 Structured Text. Your job is to clarify how the code manages pressure and flow using two PID loops in a cascade configuration.
+
+⸻
+
+🟩 T (Task) – What You Need to Do
+
+Analyze and explain the CascadeControl program, which:
+	1.	Implements two nested PID loops:
+	•	A primary loop to regulate vessel pressure (PV1)
+	•	A secondary loop to control flow rate (PV2)
+	2.	Uses the output of the pressure loop (OP1) as the setpoint (SP2) for the flow loop
+	3.	Calculates and applies PID logic with Kp, Ki, and Kd values for both loops
+	4.	Includes output clamping to keep valve signals within safe limits (0–100)
+	5.	Interfaces with external devices using ReadPressure(), ReadFlowRate(), and SetValvePosition(OP2)
+
+⸻
+
+🟦 F (Format) – How to Present It
+
+✅ Code Logic Summary:
+
+// --- Primary (outer) loop: pressure control ---
+e1 := SP1 - PV1;
+e1_sum := e1_sum + e1 * dt;
+e1_diff := (e1 - e1_prev) / dt;
+OP1 := Kp1 * e1 + Ki1 * e1_sum + Kd1 * e1_diff;
+OP1 := LIMIT(OP1, 0.0, 100.0);
+
+// --- Secondary (inner) loop: flow control ---
+SP2 := OP1; // Use pressure controller output as flow setpoint
+e2 := SP2 - PV2;
+e2_sum := e2_sum + e2 * dt;
+e2_diff := (e2 - e2_prev) / dt;
+OP2 := Kp2 * e2 + Ki2 * e2_sum + Kd2 * e2_diff;
+OP2 := LIMIT(OP2, 0.0, 100.0);
+
+// --- Actuate valve ---
+SetValvePosition(OP2);
