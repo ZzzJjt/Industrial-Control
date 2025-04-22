@@ -66,3 +66,46 @@ END_WHILE
 
 // Set the traffic lights based on the variables PROCEDURE SetTrafficLights( green: BOOL; yellow: BOOL; red: BOOL ) // Code to set the traffic lights goes here END_PROCEDURE
 
+**R-I-S-E:**
+
+🟥 R (Role) – Your Role
+
+You are a PLC programmer responsible for reviewing and correcting a traffic light control program written in IEC 61131-3 Structured Text (ST). Your task is to ensure the logic safely handles normal traffic flow, pedestrian crossings, and emergency vehicle overrides, all within a cyclic execution model typical of PLCs.
+
+⸻
+
+🟩 I (Input) – What You’re Given
+
+A code snippet is provided with:
+	•	Variables for light states (greenLightOn, yellowLightOn, redLightOn)
+	•	Inputs such as pedestrianButtonPressed and emergencyVehicleApproaching
+	•	A TON timer block for light phase durations
+	•	Non-standard constructs like WHILE TRUE DO and WAIT UNTIL, which are not scan-cycle-friendly
+
+⸻
+
+🟧 S (Steps) – What to Do
+	1.	Eliminate invalid constructs:
+	•	Replace WHILE TRUE DO and WAIT UNTIL with a finite state machine using CASE statements.
+	2.	Use a scan-compatible timer:
+	•	Keep the TON timer instance persistent across scans.
+	•	Only control .IN at proper transition points.
+	3.	Define a traffic light state variable:
+	•	Use an ENUM type (e.g., IDLE, GREEN, YELLOW, RED, EMERGENCY, PEDESTRIAN_WAIT)
+	•	Use transitions driven by inputs and timer outputs
+	4.	Handle edge-triggered events:
+	•	Detect button presses or emergency signals using R_TRIG blocks
+	•	Prevent multiple light transitions in a single scan
+	5.	Manage light outputs cleanly:
+	•	Set outputs (SetTrafficLights(...)) once per cycle, based on state
+	•	Avoid repeatedly toggling lights without transition logic
+
+⸻
+
+🟦 E (Expectation) – What You Should Achieve
+	•	A reliable traffic light controller that:
+	•	Properly prioritizes emergency vehicles
+	•	Allows safe pedestrian crossings
+	•	Operates using standard PLC scan logic, not blocking loops
+	•	Improved maintainability and extensibility for future features
+	•	Clear, safe, and well-structured logic aligned with industrial best practices
