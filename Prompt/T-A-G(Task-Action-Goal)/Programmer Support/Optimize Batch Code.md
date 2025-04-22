@@ -83,3 +83,30 @@ END_LOOP; END_PROGRAM
 
 Consider that the program is executed cyclically in a task according to the 61131-3 programming model. Thus no explicit main loop is needed. Please fix the code by removing the 'LOOP'.
 
+**T-A-G:**
+
+🟥 T (Task)
+
+Improve the existing IEC 61131-3 Structured Text batch control program for a polyethylene production process. The original code includes a LOOP construct, repeated logic for timers and state transitions, and lacks modularity in setting process conditions.
+
+⸻
+
+🟩 A (Action)
+
+To optimize the batch code:
+	1.	Remove the LOOP since PLC programs execute cyclically; replace it with scan-friendly CASE logic.
+	2.	Modularize temperature and pressure setting using a dedicated method (UpdateTemperaturesAndPressures()).
+	3.	Use a single TON timer instance, resetting it at the end of each state to avoid redundancy.
+	4.	Refactor the state machine so that each step clearly sets process conditions, waits for a timer, and transitions to the next state.
+	5.	Ensure all variable naming and structure are consistent and clear for easy maintenance and readability.
+
+⸻
+
+🟦 G (Goal)
+
+Deliver a clean, modular, and efficient batch control program that:
+	•	Conforms to IEC 61131-3 best practices
+	•	Removes scan-blocking constructs like LOOP
+	•	Improves maintainability and allows for easy expansion (e.g., adding steps)
+	•	Ensures safe and consistent execution of all batch steps with reliable timing and condition setting
+	•	Is ready for deployment in a real-world industrial automation environment
