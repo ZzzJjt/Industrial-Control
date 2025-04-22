@@ -50,3 +50,35 @@ SetValvePosition(OP2);
 END_METHOD
 
 END_PROGRAM
+
+**T-A-G:**
+
+🟥 T (Task) – What You Need to Do
+
+Explain how the provided IEC 61131-3 Structured Text program uses cascade control to manage a vessel’s pressure and flow rate using two PID loops.
+
+⸻
+
+🟩 A (Action) – How the Code Works
+	1.	Primary Loop – Pressure Control
+	•	Measures the current pressure PV1 using ReadPressure()
+	•	Compares it to the setpoint SP1
+	•	Calculates the error and applies PID control (Kp1, Ki1, Kd1)
+	•	Outputs OP1, which becomes the flow setpoint (SP2) for the inner loop
+	•	Applies clamping (0.0 to 100.0) to keep OP1 within safe limits
+	2.	Secondary Loop – Flow Control
+	•	Measures the flow rate PV2 using ReadFlowRate()
+	•	Uses OP1 as the setpoint SP2
+	•	Calculates the error and applies a second PID controller (Kp2, Ki2, Kd2)
+	•	The output OP2 sets the valve position via SetValvePosition(OP2)
+	•	Also clamps OP2 within a safe range of 0.0 to 100.0
+	3.	Timing
+	•	Uses a fixed sample time dt := t#100ms for all integral and derivative calculations
+
+⸻
+
+🟦 G (Goal) – What the Program Achieves
+	•	Stable and accurate pressure control by nesting a slower pressure loop around a faster-responding flow loop
+	•	Fast reaction to flow disturbances, improving performance compared to single-loop systems
+	•	Safe actuator operation using clamping mechanisms for both control outputs
+	•	A clear and modular example of how cascade control can be implemented in real-world industrial PLC applications
