@@ -14,3 +14,26 @@ Develop a complete list of interlocks required for a gas turbine in a power plan
 	10.	Emergency Stop Interlock: Provide a manual emergency stop button that immediately shuts down the turbine and isolates fuel supply in case of any critical malfunction.
 
 These interlocks play a crucial role in protecting the gas turbine from overheating, overpressure, and mechanical failure, ensuring safe and efficient operation in a power plant environment. Discuss how these interlocks are integrated into the overall turbine control system and their importance in maintaining safety and operational integrity.
+
+**T-A-G:**
+
+🟥 T (Task) – What You Need to Do
+
+Develop a comprehensive set of interlocks for a gas turbine in a power plant, each designed to prevent hazardous operating conditions and protect critical components from damage.
+
+⸻
+
+🟩 A (Action) – How to Do It
+	1.	Identify 10 key safety scenarios (e.g., overtemperature, overspeed, flame failure) and assign each a specific interlock.
+	2.	For each interlock, clearly define:
+	•	The condition being monitored (e.g., exhaust gas temperature, lubrication oil pressure)
+	•	The threshold value that triggers the interlock (e.g., >650°C, <1.5 bar)
+	•	The response action (e.g., shutdown turbine, close fuel valve, trigger alarm)
+	3.	Ensure interlocks include both automated logic (e.g., IEC 61131-3 Structured Text) and manual overrides (e.g., emergency stop).
+	4.	Discuss how these interlocks integrate with the turbine’s PLC or DCS system and how they maintain operational safety.
+
+⸻
+
+🟦 G (Goal) – What You Want to Achieve
+
+Create a structured safety protection system that automatically reacts to abnormal conditions and prevents turbine failure. The final output should enhance turbine reliability, reduce risk of catastrophic damage, and ensure compliance with safety standards in industrial power generation.

@@ -25,4 +25,66 @@ The entry and exit of the underground car park is controlled by a single lane pa
 	•	When the passage is clear, the green lights will turn ON again, allowing cars to enter or exit freely.
 	•	Initially, the PLC should set the green lights ON and the red lights OFF to indicate free movement.
 
+**R-T-F:**
+🟥 R (Role) – Your Role
 
+You are a PLC automation engineer tasked with programming a traffic light control system for a single-lane underground car park. The system must manage vehicle entry and exit from both the ground floor and basement, using sensors and memory flags, and control red and green lights accordingly to ensure safe one-way usage of the passage.
+
+⸻
+
+🟩 T (Task) – What You Need to Do
+
+Write a Structured Text (ST) program in accordance with IEC 61131-3 standards that:
+	1.	Monitors Sensors and Flags:
+	•	X1: Photoelectric switch at ground floor (ON when a car passes)
+	•	X2: Photoelectric switch at basement
+	•	M1–M4: ON for one scan cycle when a car passes a sensor in a specific direction
+	•	M20: TRUE if a car is in the passage from the ground floor
+	•	M30: TRUE if a car is in the passage from the basement
+	2.	Controls Outputs:
+	•	Y1: Red lights for both ends of the passage (ON = stop)
+	•	Y2: Green lights for both ends (ON = proceed)
+	3.	Implements the Logic:
+	•	When a car enters from the ground floor (M1 or M4), set M20 := TRUE
+	•	When a car enters from the basement (M2 or M3), set M30 := TRUE
+	•	When a car exits (opposite sensor triggers), reset M20 or M30
+	•	If either M20 or M30 is TRUE, the passage is occupied:
+	•	Set Y1 := TRUE (red), Y2 := FALSE (green)
+	•	If the passage is clear (M20 = FALSE and M30 = FALSE):
+	•	Set Y1 := FALSE (red off), Y2 := TRUE (green on)
+	4.	Ensure Initial State:
+	•	On startup, allow passage (Y2 := TRUE, Y1 := FALSE)
+
+⸻
+
+🟧 F (Format) – Expected Output
+
+You are expected to deliver a modular and readable Structured Text program, for example:
+// Car enters from ground floor
+IF M1 OR M4 THEN
+    M20 := TRUE;
+END_IF;
+
+// Car enters from basement
+IF M2 OR M3 THEN
+    M30 := TRUE;
+END_IF;
+
+// Car exits from ground floor
+IF M3 OR M4 THEN
+    M20 := FALSE;
+END_IF;
+
+// Car exits from basement
+IF M1 OR M2 THEN
+    M30 := FALSE;
+END_IF;
+
+// Light control logic
+IF M20 OR M30 THEN
+    Y1 := TRUE;   // Red ON
+    Y2 := FALSE;  // Green OFF
+ELSE
+    Y1 := FALSE;  // Red OFF
+    Y2 := TRUE;   // Green ON
+END_IF;

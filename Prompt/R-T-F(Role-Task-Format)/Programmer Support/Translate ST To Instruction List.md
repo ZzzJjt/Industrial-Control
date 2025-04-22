@@ -11,4 +11,17 @@ IF Mode = 0 THEN // Manual mode IF ClipButton AND ConveyorA THEN RoboticArm := T
 IF Mode = 1 THEN // Auto mode IF NOT AutoProcess AND ConveyorA THEN // Only start the process if not currently running and there is a product on conveyor A AutoProcess := TRUE; // Set flag to indicate that the auto process is running RoboticArm := TRUE; // Clip the product WAIT 2; // Wait for 2 seconds to transfer the product ConveyorB := TRUE; // Transfer the product to conveyor B END_IF IF ConveyorB AND NOT ConveyorA THEN // Release the product from conveyor B once it has been transferred and there is no product on conveyor A ConveyorB := FALSE; AutoProcess := FALSE; // Clear the flag to indicate that the auto process is not running END_IF END_IF
 
 
+**R-T-F:**
+
+🟥 R (Role) – Define Your Role
+
+Act as a control systems programmer skilled in IEC 61131-3 programming languages, with a focus on translating between Structured Text (ST) and Instruction List (IL).
+
+🟩 T (Task) – Define the Objective
+
+Translate a complete Structured Text (ST) program named PickAndPlace into its equivalent Instruction List (IL) representation. The program includes input/output variables, manual and automatic control logic, mode switching, conditional checks (IF, ELSIF), a process flag, and a time delay (WAIT). Your translation should preserve all control logic and be compliant with IL syntax.
+
+🟧 F (Format) – Specify the Output Format
+
+Provide a clean, line-by-line Instruction List (IL) version of the original ST program, using appropriate IL instructions such as LD, ST, AND, JMPC, JMP, and labels. Include comments for readability where necessary and simulate the WAIT instruction using counters or available timer logic compatible with IL.
 

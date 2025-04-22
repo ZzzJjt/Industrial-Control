@@ -66,3 +66,42 @@ END_WHILE
 
 // Set the traffic lights based on the variables PROCEDURE SetTrafficLights( green: BOOL; yellow: BOOL; red: BOOL ) // Code to set the traffic lights goes here END_PROCEDURE
 
+**B-A-B:**
+
+🟥 Before – The Problem or Context
+
+You’re working with a 61131-3 Structured Text program to control a traffic light system that must respond to pedestrian button presses and emergency vehicle detection. However, the logic has several flaws that can cause:
+	•	Unexpected light transitions
+	•	Timer behavior that’s inconsistent
+	•	Overlapping or unsafe light states
+	•	Logical conflicts in the emergency and pedestrian handling
+
+Your task is to identify and fix these issues to ensure the traffic light behaves safely and predictably under all scenarios.
+
+⸻
+
+🟩 After – The Fixed, Improved Outcome
+
+The corrected code will:
+	•	Properly initialize the timer and control its lifecycle
+	•	Avoid overwriting light states multiple times in the same cycle
+	•	Ensure pedestrian and emergency modes are handled mutually exclusively and return to normal operation cleanly
+	•	Use the TON timer correctly (declaring .ET and .Q, handling .IN carefully)
+	•	Remove unsafe constructs like WHILE TRUE DO and WAIT UNTIL which are not IEC-compliant in cyclic PLC scan models
+
+⸻
+
+🟦 Bridge – Explanation and Fix Suggestions
+
+🔧 Problems in the original code:
+	1.	Infinite WHILE TRUE loop blocks the main PLC scan cycle – this structure is not cyclic-friendly.
+	2.	WAIT UNTIL NOT pedestrianButtonPressed; – not a valid Structured Text construct in most IEC 61131-3 PLCs.
+	3.	The timer instance is reinitialized multiple times in one cycle → this can invalidate timing logic.
+	4.	SetTrafficLights(...) is called every cycle, even if no change occurred.
+	5.	No state machine is used – leading to unreadable and fragile control flow.
+
+✅ Suggested Fixes:
+	•	Implement a state machine (e.g., enum type: NORMAL, TO_YELLOW, TO_RED, PEDESTRIAN, EMERGENCY)
+	•	Trigger transitions using flags and timer expiration
+	•	Use R_TRIG for rising edge detection (e.g., pedestrian button press)
+	•	Properly manage the timer: only change .IN when starting/stopping the phase

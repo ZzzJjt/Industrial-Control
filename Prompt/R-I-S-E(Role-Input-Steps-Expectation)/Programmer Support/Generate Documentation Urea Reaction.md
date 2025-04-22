@@ -59,3 +59,47 @@ END_IF
 
 END_PROGRAM
 
+**R-I-S-E:**
+
+🟥 R (Role) – Your Role
+
+You are a PLC control system developer responsible for documenting an IEC 61131-3 Structured Text (ST) program titled UreaReactionControl. The goal is to create a clear, professional-level technical documentation that will help other engineers understand, maintain, and verify the logic of the urea reaction process.
+
+⸻
+
+🟩 I (Input) – What You’re Given
+
+You are provided with a full ST program that:
+	•	Opens ammonia and CO₂ valves to load raw materials
+	•	Monitors pressure and temperature conditions inside a reactor
+	•	Times the urea reaction process over a fixed period
+	•	Contains internal states for tracking progress (e.g., step flags, timer, and finished flag)
+	•	Uses threshold values and tolerances to determine safe operation
+
+⸻
+
+🟧 S (Steps) – What You Need to Do
+	1.	Summarize the program’s purpose: Explain that it controls a two-phase urea reaction involving material loading and monitored reaction timing.
+	2.	Describe all variables:
+	•	Inputs (e.g., valve status, sensor readings)
+	•	Outputs (e.g., valve control signals)
+	•	Internal control flags
+	•	Reaction parameters like pressure, temperature, and timing
+	3.	Outline the control flow:
+	•	Step 1: Open valves and wait until both confirm open
+	•	Step 2: Check whether pressure and temperature are within range
+	•	Start the timer and keep conditions steady until the reaction time completes
+	•	Final: Close valves and set the finished flag
+	4.	Clarify timer logic: Highlight how the CURRENT_TIME is used to track the duration of the reaction process.
+
+⸻
+
+🟦 E (Expectation) – What the Output Should Look Like
+
+The final output should be a well-organized, developer-friendly documentation that includes:
+	•	A purpose section
+	•	A variable list (with types and descriptions)
+	•	A logic flow explanation (step-by-step control behavior)
+	•	Notes on how and when valves are triggered
+	•	Description of reaction success criteria (temperature/pressure/timer)
+	•	A ready-to-use reference for future development, safety checks, and compliance

@@ -83,3 +83,53 @@ END_LOOP; END_PROGRAM
 
 Consider that the program is executed cyclically in a task according to the 61131-3 programming model. Thus no explicit main loop is needed. Please fix the code by removing the 'LOOP'.
 
+**C-A-R-E:**
+
+🟥 C (Context)
+
+The provided IEC 61131-3 Structured Text code represents a batch control system for polyethylene production. It manages several sequential steps like raw material preparation, polymerization, quenching, drying, pelletizing, quality control, and packaging. Each state sets a temperature and pressure, waits for a timed duration, and then moves to the next step. However, the code includes a LOOP, which is inappropriate in a cyclic execution model (typical for PLCs), and uses repeated timer logic without abstraction.
+
+⸻
+
+🟩 A (Action)
+
+To optimize and correct the batch control program:
+	1.	Remove the LOOP construct – PLC code in 61131-3 runs cyclically, so continuous looping within the program is unnecessary and may cause execution issues.
+	2.	Abstract repeated logic – Extract temperature/pressure updates into a method, and simplify timer handling to increase readability.
+	3.	Refactor state machine logic – Use a cleaner CASE structure to handle each step with consistent timing behavior.
+	4.	Ensure safe transitions – Reset timers properly after transitions and maintain clear variable scope.
+
+⸻
+
+🟨 R (Result)
+
+The optimized code:
+	•	Conforms to 61131-3 programming best practices, avoiding cyclic loops inside the program.
+	•	Improves maintainability through modular methods like UpdateTemperaturesAndPressures.
+	•	Increases scalability, making it easier to add or modify process steps.
+	•	Reduces the chance of logical errors, such as unreset timers or overlapping transitions.
+
+⸻
+
+🟦 E (Example)
+
+Here is a simplified snippet from the improved structure:
+CASE state OF
+  1: // Raw material preparation
+     timer(IN := TRUE, PT := T#5s);
+     SetTemperatureAndPressure(rawMatPrepTemp, rawMatPrepPressure);
+     IF timer.Q THEN
+        state := 2;
+        timer(IN := FALSE);
+     END_IF;
+
+  2: // Polymerization
+     timer(IN := TRUE, PT := T#30m);
+     SetTemperatureAndPressure(polymerizationTemp, polymerizationPressure);
+     IF timer.Q THEN
+        state := 3;
+        timer(IN := FALSE);
+     END_IF;
+  // ... other states continue similarly
+END_CASE;
+

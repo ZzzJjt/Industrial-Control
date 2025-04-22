@@ -83,3 +83,43 @@ END_LOOP; END_PROGRAM
 
 Consider that the program is executed cyclically in a task according to the 61131-3 programming model. Thus no explicit main loop is needed. Please fix the code by removing the 'LOOP'.
 
+**R-I-S-E:**
+
+🟥 R (Role – Who You Are)
+
+You are a PLC engineer or control systems programmer responsible for maintaining and improving IEC 61131-3-based batch control logic for a polyethylene production process.
+
+⸻
+
+🟩 I (Input – What You Have)
+
+You are given a Structured Text program that:
+	•	Controls a multi-step batch process (raw material prep → polymerization → quenching → drying → pelletizing → QA → packaging)
+	•	Uses a state variable and a TON timer for step durations
+	•	Incorrectly contains a LOOP, despite the code being executed cyclically in a PLC scan cycle
+	•	Repeats temperature and pressure setting logic with minimal abstraction
+
+⸻
+
+🟧 S (Steps – What You Need to Do)
+	1.	Remove the LOOP: Replace it with cyclic logic conforming to the 61131-3 scan model.
+	2.	Refactor repeated logic: Create or improve a method such as UpdateTemperaturesAndPressures() to centralize condition setting per state.
+	3.	Standardize timer usage: Ensure each state:
+	•	Initializes the timer on entry
+	•	Evaluates timer.Q for completion
+	•	Resets timer.IN and advances state properly
+	4.	Improve structure and readability:
+	•	Align comments and formatting
+	•	Optionally extract each batch step into a function or method
+	•	Group process parameters and state logic clearly
+
+⸻
+
+🟦 E (Expectation – What Success Looks Like)
+
+A properly optimized program will:
+	•	Comply with best practices of IEC 61131-3 (no LOOP, cyclic logic only)
+	•	Be easier to read, maintain, and scale (e.g., adding steps or changing durations)
+	•	Reliably advance batch steps using timers
+	•	Promote reuse and modularity, such as methods for setting process conditions
+	•	Enable safe execution and debugging by minimizing logic duplication and state inconsistencies

@@ -6,3 +6,16 @@ Write a structured start-up sequence that sequentially activates the heating and
 
 Ensure the program includes typical parameter values, timers, and conditions for each stage of the start-up and shutdown procedures, and discuss the importance of winding tension in maintaining machine efficiency and product quality.
 
+**T-A-G:**
+
+🟥 T (Task)
+
+Develop a Structured Text (ST) control program for managing the start-up and shutdown sequences of a 3D pouch making machine using the IEC 61131-3 standard.
+
+🟩 A (Action)
+
+Create logic that sequentially powers on 8 heating stations and 8 cooling stations, regulates two feeder units to maintain winding tension, and synchronizes a horizontal and vertical cutter with material movement. Incorporate timers, parameter thresholds, and interlocks to ensure safe and efficient startup. Similarly, implement a structured shutdown sequence that gradually deactivates each component in reverse order—ensuring proper cooling and safe tension release. Include annotated code to explain each step and logic condition.
+
+🟦 G (Goal)
+
+Ensure the machine operates safely and efficiently under varying production conditions. The resulting program should maintain stable tension, prevent equipment damage, and preserve product quality throughout both start-up and shutdown procedures.

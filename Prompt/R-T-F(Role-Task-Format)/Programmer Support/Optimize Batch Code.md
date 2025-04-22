@@ -83,3 +83,41 @@ END_LOOP; END_PROGRAM
 
 Consider that the program is executed cyclically in a task according to the 61131-3 programming model. Thus no explicit main loop is needed. Please fix the code by removing the 'LOOP'.
 
+**R-T-F:**
+
+🟥 R (Role)
+
+You are a control systems developer tasked with optimizing a PLC batch process program written in IEC 61131-3 Structured Text. The program controls a polyethylene production sequence and is currently using an incorrect loop structure along with redundant code patterns.
+
+⸻
+
+🟩 T (Task)
+
+Refactor the provided batch control code to:
+	1.	Remove the LOOP construct, since the code is executed cyclically and does not require an explicit loop structure.
+	2.	Ensure proper state-based execution using a CASE statement.
+	3.	Modularize temperature and pressure logic using helper methods like UpdateTemperaturesAndPressures().
+	4.	Standardize timer logic for each state transition to reduce code repetition and improve readability.
+	5.	Ensure that the code is clean, efficient, and aligned with 61131-3 best practices, enabling future scaling and maintenance.
+
+⸻
+
+🟦 F (Format)
+
+Provide the refactored version of the code in standard IEC 61131-3 Structured Text using:
+	•	A clean state machine structure without any LOOP
+	•	Well-commented sections for each process step
+	•	Modular logic through methods/functions
+	•	Use of the TON timer for step durations
+	•	Clear and scalable logic suitable for production use
+
+Example format for one step:
+
+CASE state OF
+  1: // Raw Material Preparation
+    SetTemperatureAndPressure(rawMatPrepTemp, rawMatPrepPressure);
+    timer(IN := TRUE, PT := T#5s);
+    IF timer.Q THEN
+      state := 2;
+      timer(IN := FALSE);
+    END_IF;

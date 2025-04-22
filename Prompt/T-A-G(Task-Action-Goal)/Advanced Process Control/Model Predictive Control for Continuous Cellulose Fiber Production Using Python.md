@@ -5,3 +5,18 @@ Explain how model predictive control (MPC) can optimize cellulose fiber producti
 Develop Python code to simulate the system dynamics, including the dead time and fluctuating demand.
 
 Implement Python code for a model predictive control (MPC) algorithm to optimize material flow, taking into account the time delay, fluctuating demand, and operational constraints.
+
+
+**T-A-G:**
+
+🟥 T（Task）
+
+Design a model predictive control (MPC) strategy for a cellulose fiber production system using Python, where material is fed continuously but processed in a two-stage batch operation before entering a demand-driven buffer tank.
+
+🟩 A（Action）
+
+Explain the limitations of traditional PID control in handling upstream delays and fluctuating product demand. Simulate the system dynamics in Python, incorporating a two-hour delay from the batch process and variable outfeed behavior. Implement an MPC controller that anticipates future demand and adjusts infeed rates accordingly to maintain an optimal buffer tank level.
+
+🟦 G（Goal）
+
+Ensure stable and efficient downstream operation by keeping the buffer tank at a high fill level, minimizing downtime, and maintaining smooth material flow despite system delays and unpredictable demand patterns.
