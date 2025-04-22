@@ -30,6 +30,7 @@ ELSIF OP1 < 0.0 THEN
     OP1 := 0.0;
 END_IF;
 
+
 // Secondary loop: flow control
 SP2 := OP1;
 e2 := SP2 - PV2;
@@ -50,3 +51,48 @@ SetValvePosition(OP2);
 END_METHOD
 
 END_PROGRAM
+
+**R-I-S-E:**
+
+🟥 R (Role) – Your Role
+
+You are a control systems engineer tasked with analyzing and explaining a cascade control program written in IEC 61131-3 Structured Text. This program implements a two-layer PID control structure to regulate pressure through flow control in an industrial vessel system.
+
+⸻
+
+🟩 I (Input) – What You’re Given
+	•	Primary loop variables:
+	•	PV1: vessel pressure (measured)
+	•	SP1: target pressure
+	•	OP1: output to the secondary loop (flow setpoint)
+	•	Kp1, Ki1, Kd1: PID tuning parameters for pressure control
+	•	Secondary loop variables:
+	•	PV2: flow rate (measured)
+	•	SP2: target flow rate (set by OP1)
+	•	OP2: output to valve (controls flow)
+	•	Kp2, Ki2, Kd2: PID tuning parameters for flow control
+	•	Time settings:
+	•	dt: sample time of 100 ms used for integration and derivative terms
+
+⸻
+
+🟧 S (Steps) – What Happens in the Code
+	1.	Read measurements:
+	•	PV1 := ReadPressure() and PV2 := ReadFlowRate() fetch real-time process values.
+	2.	Primary (outer) PID loop – Pressure control:
+	•	Calculates pressure error: e1 := SP1 - PV1
+	•	Computes PID output OP1, which becomes the setpoint for the flow loop
+	•	Clamps OP1 within 0–100 to ensure a valid output
+	3.	Secondary (inner) PID loop – Flow control:
+	•	Uses SP2 := OP1 to set the flow target
+	•	Calculates flow error: e2 := SP2 - PV2
+	•	Computes OP2 using PID logic and sends it to SetValvePosition(OP2)
+	•	Clamps OP2 between 0–100 for safety
+
+⸻
+
+🟦 E (Expectation) – What the Code Should Achieve
+	•	The outer loop ensures the pressure remains at its setpoint by adjusting the flow setpoint dynamically.
+	•	The inner loop reacts faster to disturbances in flow, ensuring pressure control remains stable and responsive.
+	•	This cascade structure improves disturbance rejection and control accuracy compared to a single-loop system.
+	•	It also adds protection mechanisms (clamping) to avoid sending unsafe control signals to actuators.
