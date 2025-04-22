@@ -59,3 +59,41 @@ END_IF
 
 END_PROGRAM
 
+**R-T-F:**
+
+🟥 R (Role) – Your Role
+
+You are a PLC automation engineer tasked with creating developer-level documentation for an IEC 61131-3 Structured Text (ST) program named UreaReactionControl. This documentation will help future engineers and integrators understand the control logic and operational workflow of the urea reaction process.
+
+⸻
+
+🟩 T (Task) – What You Need to Do
+
+Develop a clear and structured developer documentation for the UreaReactionControl program that includes:
+	1.	A program overview describing the purpose and sequence of the urea synthesis process.
+	2.	A description of all variables, including:
+	•	Inputs (sensor and valve status signals)
+	•	Outputs (control signals for valves)
+	•	Internal flags for step tracking
+	•	Configurable parameters (pressure, temperature, timing)
+	3.	A step-by-step explanation of the logic:
+	•	Step 1: Raw material loading
+	•	Step 2: Reaction control based on process variables
+	•	Final step: Automatic shutdown upon successful completion
+	4.	Clarification on how timing is managed using CURRENT_TIME and the reaction timer.
+
+⸻
+
+🟦 F (Format) – Output Format
+
+Prepare the documentation in a format suitable for:
+	•	Developer handbooks (Markdown, Word, or PDF)
+	•	Technical audits or validation reports
+	•	Inline code comments and header blocks
+
+Include the following sections in the documentation:
+	•	Program Purpose
+	•	Variable Table (Inputs, Outputs, Internals, Parameters)
+	•	Control Sequence Diagram or Description
+	•	Timing Logic Explanation
+	•	Safety and Termination Conditions
