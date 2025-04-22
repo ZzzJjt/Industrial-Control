@@ -66,3 +66,38 @@ END_WHILE
 
 // Set the traffic lights based on the variables PROCEDURE SetTrafficLights( green: BOOL; yellow: BOOL; red: BOOL ) // Code to set the traffic lights goes here END_PROCEDURE
 
+**T-A-G:**
+
+🟥 T (Task) – What You Need to Do
+
+Review and correct a 61131-3 Structured Text program that controls a traffic light system. The system must correctly handle three conditions:
+	•	Normal traffic operation
+	•	Pedestrian button activation
+	•	Emergency vehicle approach
+
+The existing code contains structural and logical errors (e.g., use of WHILE TRUE and WAIT UNTIL) that prevent proper cyclic PLC execution and lead to unreliable behavior.
+
+⸻
+
+🟩 A (Action) – How You Should Approach It
+	1.	Remove non-standard programming constructs:
+	•	Eliminate WHILE TRUE DO and WAIT UNTIL, which are not IEC 61131-3 compliant for cyclic scan models.
+	2.	Implement a finite state machine (FSM) using a CASE statement:
+	•	Define clear states such as GREEN_PHASE, YELLOW_PHASE, RED_PHASE, PEDESTRIAN_WAIT, and EMERGENCY_OVERRIDE.
+	•	Control light transitions and timer logic based on these states.
+	3.	Correct the use of the TON timer:
+	•	Initialize the timer only once per phase and control it using a persistent instance (timer(IN := TRUE)).
+	4.	Use rising edge detection (e.g., R_TRIG):
+	•	For detecting new pedestrian requests or emergency vehicle presence without false triggers.
+	5.	Update light outputs only once per cycle:
+	•	Use SetTrafficLights(...) at the end of each scan, based on the current state logic.
+
+⸻
+
+🟦 G (Goal) – What the Final Code Should Achieve
+	•	A scan-friendly and safe PLC program that:
+	•	Prioritizes emergency vehicle passage by switching directly to green
+	•	Enables pedestrians to cross safely by introducing a red phase
+	•	Follows a valid and maintainable light cycle sequence
+	•	Uses a reusable, extensible structure with timers and state variables
+	•	Complies fully with IEC 61131-3 for industrial applications
