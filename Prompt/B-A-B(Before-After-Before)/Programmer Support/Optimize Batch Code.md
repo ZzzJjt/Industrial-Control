@@ -83,3 +83,121 @@ END_LOOP; END_PROGRAM
 
 Consider that the program is executed cyclically in a task according to the 61131-3 programming model. Thus no explicit main loop is needed. Please fix the code by removing the 'LOOP'.
 
+**B-A-B:**
+
+🟥 Before – The Current Situation
+
+The current IEC 61131-3 Structured Text program controls a polyethylene batch process with multiple steps such as raw material preparation, polymerization, quenching, drying, pelletizing, and packaging. Each step sets specific temperature and pressure conditions and waits a defined time using a TON timer. However, the program:
+	•	Incorrectly uses a LOOP construct in a cyclically executed environment, which can lead to blocking behavior or execution inefficiency.
+	•	Repeats similar timer logic and lacks modularity.
+	•	Could benefit from code cleanup, improved readability, and more scalable structure for future expansion.
+
+⸻
+
+🟩 After – The Improved Outcome
+
+The optimized version of the code:
+	•	Removes the unnecessary LOOP, relying instead on the cyclic nature of PLC task execution.
+	•	Encapsulates step logic to improve modularity and readability.
+	•	Ensures state-based execution per cycle without blocking the task loop.
+	•	Introduces consistent timer handling and a cleaner state machine for better maintainability.
+
+⸻
+
+🟦 Bridge – How to Get There (Optimized Version)
+
+Here’s how to revise the code:
+
+PROGRAM PolyethyleneBatchControl
+VAR
+    state: INT := 0;
+    timer: TON;
+    stepStartTime: TIME;
+    rawMatPrepTemp: REAL := 70.0;
+    rawMatPrepPressure: REAL := 1.0;
+    polymerizationTemp: REAL := 150.0;
+    polymerizationPressure: REAL := 30.0;
+    quenchingTemp: REAL := 25.0;
+    quenchingPressure: REAL := 5.0;
+    dryingTemp: REAL := 80.0;
+    pelletizingTemp: REAL := 150.0;
+    qualityControlTemp: REAL := 25.0;
+    packagingStorageTemp: REAL := 20.0;
+END_VAR
+
+METHOD PRIVATE SetTemperatureAndPressure : BOOL
+VAR_INPUT
+    temp: REAL;
+    pressure: REAL;
+END_VAR
+// Simulated logic for setting process conditions
+RETURN TRUE;
+END_METHOD
+
+METHOD PRIVATE UpdateTemperaturesAndPressures : BOOL
+CASE state OF
+    1: SetTemperatureAndPressure(rawMatPrepTemp, rawMatPrepPressure);
+    2: SetTemperatureAndPressure(polymerizationTemp, polymerizationPressure);
+    3: SetTemperatureAndPressure(quenchingTemp, quenchingPressure);
+    4: SetTemperatureAndPressure(dryingTemp, quenchingPressure);
+    5: SetTemperatureAndPressure(pelletizingTemp, quenchingPressure);
+    6: SetTemperatureAndPressure(qualityControlTemp, quenchingPressure);
+    7: SetTemperatureAndPressure(packagingStorageTemp, quenchingPressure);
+END_CASE;
+RETURN TRUE;
+END_METHOD
+
+// Main cycle logic
+timer(IN := NOT timer.Q);
+
+CASE state OF
+    0:
+        state := 1;
+        stepStartTime := TIME();
+        timer(IN := FALSE);
+
+    1:
+        timer(PT := T#5s);
+        IF timer.Q THEN
+            state := 2; timer(IN := FALSE); stepStartTime := TIME();
+        END_IF;
+
+    2:
+        timer(PT := T#30m);
+        IF timer.Q THEN
+            state := 3; timer(IN := FALSE); stepStartTime := TIME();
+        END_IF;
+
+    3:
+        timer(PT := T#15m);
+        IF timer.Q THEN
+            state := 4; timer(IN := FALSE); stepStartTime := TIME();
+        END_IF;
+
+    4:
+        timer(PT := T#1h);
+        IF timer.Q THEN
+            state := 5; timer(IN := FALSE); stepStartTime := TIME();
+        END_IF;
+
+    5:
+        timer(PT := T#1h30m);
+        IF timer.Q THEN
+            state := 6; timer(IN := FALSE); stepStartTime := TIME();
+        END_IF;
+
+    6:
+        timer(PT := T#2h);
+        IF timer.Q THEN
+            state := 7; timer(IN := FALSE); stepStartTime := TIME();
+        END_IF;
+
+    7:
+        timer(PT := T#3h);
+        IF timer.Q THEN
+            state := 0; timer(IN := FALSE);
+        END_IF;
+END_CASE;
+
+// Call update
+UpdateTemperaturesAndPressures();
