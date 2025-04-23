@@ -2,51 +2,45 @@
 
 Create a control narrative for a reactor producing ammonium nitrates including concrete setpoints and ranges.
 
-**R-I-S-E:**
+**R-T-F:**
 
 🟥 R (Role) – Define Your Role
 
-You are a chemical process control engineer responsible for drafting a control narrative for the ammonium nitrate reactor used in continuous production. Your narrative will support PLC/DCS programming and operator training.
+Act as a process control engineer developing a formal control narrative for a reactor producing ammonium nitrate, intended for automation system configuration, safety documentation, and operator reference.
 
 ⸻
 
-🟩 I (Input) – Information Provided
+🟩 T (Task) – Define the Objective
 
-You need to develop a control narrative that includes:
-	•	Setpoints and acceptable operating ranges for temperature, pressure, pH, and flow ratios
-	•	A list of required instrumentation and equipment, including sensors, valves, and controllers
-	•	Clear operational procedures: startup, steady-state control, shutdown
-	•	Defined control logic, including alarms, interlocks, and safety functions
-
-⸻
-
-🟧 S (Steps) – Steps to Perform
-	1.	Identify key control parameters with setpoints and ranges:
-	•	Reactor temperature: 175 °C ± 2 °C
-	•	Reactor pressure: 4.8 bar ± 0.2 bar
-	•	Ammonia:nitric acid molar ratio: 1.01:1
-	•	Outlet pH: 6.2 ± 0.3
-	2.	List critical equipment and instrumentation:
-	•	TIC-101: Temperature control loop
-	•	PIC-102: Pressure control loop
-	•	FIC-103/FIC-104: Ammonia and acid flow controllers
-	•	AIC-105: Inline pH analyzer
-	•	ESD-106: Emergency shutdown valve
-	3.	Define control procedures:
-	•	Startup: Ensure all control loops are in AUTO, initiate flow with ramp-up control, preheat reactor, verify level and pressure
-	•	Steady-state operation: Use ratio control between FIC-103 and FIC-104, monitor TIC-101 and PIC-102 with PID logic, adjust ammonia flow to maintain pH
-	•	Shutdown: Initiate safe ramp-down, isolate feeds, depressurize reactor, open vent paths as needed
-	4.	Add interlocks and alarms:
-	•	ESD if temperature > 185 °C or pressure > 5.2 bar
-	•	Low-pH trip if pH < 5.5 sustained for >30 seconds
-	•	High-level switch disables acid feed if LSH-107 = TRUE
+Draft a control narrative that:
+	•	Describes the process purpose and operating principles of the ammonium nitrate reactor
+	•	Specifies key process parameters with setpoints and acceptable ranges (e.g., temperature, pressure, pH, flow ratios)
+	•	Details the required instrumentation and control equipment, including control loops (e.g., TIC, PIC, FIC), sensors, and valves
+	•	Outlines the sequence of operation for startup, normal operation, and shutdown
+	•	Includes interlock conditions and alarm logic to ensure safe and stable operation
 
 ⸻
 
-🟦 E (Expectation) – Expected Outcome
+🟧 F (Format) – Specify the Output Format
 
-Deliver a structured, detailed control narrative that:
-	•	Provides a clear operational guideline for reactor automation
-	•	Ensures safe, efficient, and regulatory-compliant ammonium nitrate production
-	•	Enables translation into ladder logic, function blocks, or ISA-88 control modules
-	•	Supports integration with alarm management and HMI/SCADA systems
+Structure the control narrative as follows:
+	1.	Process Overview
+	•	Purpose: Neutralize nitric acid with ammonia to produce ammonium nitrate
+	•	Reactor Type: Continuous Stirred Tank Reactor (CSTR)
+	•	Normal flow conditions and operational limits
+	2.	Key Setpoints and Ranges
+	•	Temperature (TIC-101): 175 °C ± 2 °C
+	•	Pressure (PIC-102): 4.8 bar ± 0.2 bar
+	•	Ammonia:Acid Ratio (FRC-103): 1.01:1
+	•	pH Control (AIC-105): Target = 6.2, acceptable range = 5.8–6.5
+	3.	Instrumentation and Equipment
+	•	Flow transmitters (FIC-103, FIC-104), pH analyzer (AIC-105)
+	•	Safety interlocks: high-pressure switch, high-temperature alarm, emergency shutoff valve (ESD-106)
+	4.	Sequence of Operation
+	•	Startup: Initialize controllers, ramp up feed flows, preheat reactor, activate ratio and pH control
+	•	Steady-State: Maintain PID loops, monitor deviation alarms, and log key values
+	•	Shutdown: Isolate feeds, depressurize, stop heating, drain reactor contents
+	5.	Interlocks and Alarms
+	•	Temperature > 185 °C → emergency shutdown
+	•	Pressure > 5.2 bar → close feed valves
+	•	pH < 5.5 → alarm + reduce ammonia flow
