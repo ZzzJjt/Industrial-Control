@@ -1,16 +1,32 @@
-**Modbus Server for Parallel Client Connections using 61131-3 Structured Text:**
+### **1. Standardized Communication Protocols**
+   - **Use OPC UA or MQTT** for structured data exchange between the IO-Link master and higher-level systems (SCADA, MES, ERP).
+   - **IO-Link over PROFINET/EtherNet/IP** ensures seamless integration with PLCs while maintaining real-time performance.
 
-Develop a self-contained 61131-3 structured text function block to implement a Modbus server capable of handling up to 10 parallel client connection requests over Modbus TCP. The server should manage Modbus requests within data ranges that map input and holding registers. The following Modbus function codes must be supported:
+### **2. Robust Error Handling & Diagnostics**
+   - **Leverage IO-Link Device Diagnostics (IODD files)** to interpret device-specific errors.
+   - **Monitor Master Status Flags** (e.g., communication errors, device disconnections).
+   - **Implement Watchdog Timers** to detect and recover from communication timeouts.
 
-	•	0x01: Read Coils
-	•	0x02: Read Discrete Inputs
-	•	0x03: Read Holding Registers
-	•	0x04: Read Input Registers
-	•	0x05: Write Single Coil
-	•	0x06: Write Single Register
-	•	0x0F: Write Multiple Coils
-	•	0x10: Write Multiple Registers
-	•	0x17: Read/Write Multiple Registers
+### **3. Data Consistency & Buffering**
+   - **Use Cyclic Data Exchange** (instead of on-demand polling) to ensure consistent updates.
+   - **Local Buffering at the Master** helps retain the last known good state if communication fails.
+   - **Timestamp Data** to detect stale or delayed updates.
 
-In addition, describe the ReadCoils method, explaining how it processes client requests, maps coil data, and manages communication over TCP/IP.
+### **4. Redundancy & Fail-Safe Mechanisms**
+   - **Dual-Port IO-Link Masters** (if available) for redundancy.
+   - **Fallback to Default Values** when communication is lost.
+   - **Heartbeat Monitoring** between the PLC and IO-Link master.
 
+### **5. Enhanced System Diagnostics**
+   - **Log Communication Errors** (e.g., CRC errors, retries) for predictive maintenance.
+   - **Use IO-Link SIO Mode** (Standard IO mode) as a fallback if the device loses configuration.
+   - **Visual Indicators (LEDs on Masters/Devices)** for quick fault localization.
+
+### **6. Remote Configuration & Firmware Updates**
+   - **Parameter Server Functionality** (store device configurations in the master).
+   - **OTA (Over-the-Air) Updates** for remote firmware upgrades.
+
+### **7. Best Practices for Network Stability**
+   - **Shielded Cables & Proper Grounding** to reduce EMI/RFI interference.
+   - **Segment Networks** to avoid bandwidth congestion.
+   - **Keep IO-Link Cable Lengths < 20m** (per IO-Link specification).
