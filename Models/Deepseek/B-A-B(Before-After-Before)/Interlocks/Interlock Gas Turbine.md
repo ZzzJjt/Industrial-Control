@@ -1,16 +1,79 @@
-**Interlock Gas Turbine:**
+PROGRAM PLC_PRG
+VAR
+    // Sensor Inputs
+    ExhaustTemp: REAL := 0.0;        // Exhaust gas temperature (°C)
+    RotorSpeed: REAL := 0.0;         // % of nominal speed
+    CombustionPressure: REAL := 0.0; // Combustion chamber pressure (bar)
+    OilPressure: REAL := 0.0;        // Lubrication oil pressure (bar)
+    Vibration: REAL := 0.0;          // Bearing vibration (mm/s)
+    FlameDetected: BOOL := TRUE;     // Flame status
+    FuelPressure: REAL := 0.0;       // Fuel gas pressure (bar)
+    CoolantFlow: REAL := 0.0;        // Cooling water flow (L/min)
+    SurgeDetected: BOOL := FALSE;    // Compressor surge flag
+    EmergencyStop: BOOL := FALSE;    // Manual emergency stop
 
-Develop a complete list of interlocks required for a gas turbine in a power plant. These interlocks are essential for ensuring safe operation and protecting the equipment from damage or failure. The list includes critical safety conditions and the corresponding actions to prevent hazardous situations:
+    // Actuators / Outputs
+    TurbineRunning: BOOL := TRUE;
+    FuelValveOpen: BOOL := TRUE;
+    ReliefValveOpen: BOOL := FALSE;
+    BypassValveOpen: BOOL := FALSE;
+    AlarmFlameFailure: BOOL := FALSE;
+END_VAR
 
-	1.	Overtemperature Interlock: Shutdown the turbine if the exhaust gas temperature exceeds a predefined limit (e.g., 650°C) to prevent thermal damage to turbine components.
-	2.	Overspeed Interlock: Trigger an emergency stop if the turbine rotor speed exceeds its maximum operating threshold (e.g., 105% of nominal speed), ensuring the protection of mechanical components.
-	3.	Overpressure Interlock: Open the pressure relief valve if the pressure in the combustion chamber exceeds safe levels (e.g., 30 bar) to prevent pressure-related damage or explosion.
-	4.	Low Lubrication Pressure Interlock: Stop the turbine if lubrication oil pressure falls below the safe operating limit (e.g., 1.5 bar) to avoid bearing or rotor damage due to insufficient lubrication.
-	5.	High Vibration Interlock: Shut down the turbine if excessive vibration is detected (e.g., vibration amplitude exceeds 10 mm/s), which could indicate mechanical imbalance or impending failure.
-	6.	Flame Failure Interlock: Immediately stop fuel flow and trigger an alarm if the flame in the combustion chamber extinguishes, preventing unburned fuel accumulation and potential explosion risks.
-	7.	Fuel Gas Pressure Low Interlock: Close the fuel valve and stop the turbine if the fuel gas pressure drops below the required minimum (e.g., 2 bar) to avoid incomplete combustion.
-	8.	Cooling Water Flow Interlock: Shutdown the turbine if cooling water flow falls below the minimum safe flow rate (e.g., 200 L/min), ensuring the turbine components do not overheat.
-	9.	Compressor Surge Interlock: Activate a bypass valve or reduce load if the compressor experiences a surge condition, preventing damage to the compressor blades.
-	10.	Emergency Stop Interlock: Provide a manual emergency stop button that immediately shuts down the turbine and isolates fuel supply in case of any critical malfunction.
+// Interlock Logic
+// ----------------
 
-These interlocks play a crucial role in protecting the gas turbine from overheating, overpressure, and mechanical failure, ensuring safe and efficient operation in a power plant environment. Discuss how these interlocks are integrated into the overall turbine control system and their importance in maintaining safety and operational integrity.
+// 1. Overtemperature Interlock
+IF ExhaustTemp > 650.0 THEN
+    TurbineRunning := FALSE;
+END_IF;
+
+// 2. Overspeed Interlock
+IF RotorSpeed > 105.0 THEN
+    TurbineRunning := FALSE;
+END_IF;
+
+// 3. Overpressure Interlock
+IF CombustionPressure > 30.0 THEN
+    ReliefValveOpen := TRUE;
+END_IF;
+
+// 4. Low Lubrication Pressure Interlock
+IF OilPressure < 1.5 THEN
+    TurbineRunning := FALSE;
+END_IF;
+
+// 5. High Vibration Interlock
+IF Vibration > 10.0 THEN
+    TurbineRunning := FALSE;
+END_IF;
+
+// 6. Flame Failure Interlock
+IF NOT FlameDetected THEN
+    FuelValveOpen := FALSE;
+    AlarmFlameFailure := TRUE;
+    TurbineRunning := FALSE;
+END_IF;
+
+// 7. Low Fuel Gas Pressure Interlock
+IF FuelPressure < 2.0 THEN
+    FuelValveOpen := FALSE;
+    TurbineRunning := FALSE;
+END_IF;
+
+// 8. Low Cooling Water Flow Interlock
+IF CoolantFlow < 200.0 THEN
+    TurbineRunning := FALSE;
+END_IF;
+
+// 9. Compressor Surge Interlock
+IF SurgeDetected THEN
+    BypassValveOpen := TRUE;
+    TurbineRunning := FALSE; // Optionally reduce load instead
+END_IF;
+
+// 10. Emergency Stop Interlock
+IF EmergencyStop THEN
+    FuelValveOpen := FALSE;
+    TurbineRunning := FALSE;
+END_IF;
