@@ -68,3 +68,28 @@ IF NOT HumanDetected AND NOT WashActive THEN
 END_IF;
 
 END_FUNCTION_BLOCK
+
+
+PROGRAM PLC_PRG
+VAR
+    CarPresentInput AT %IX100.0 : BOOL; // Simulated input bits
+    HumanDetectedInput AT %IX100.1 : BOOL;
+
+    CarWashCtrl: CarWashSafetyControl;
+
+    // Output signals to actuators/alarm
+    WashMotor AT %QX0.0 : BOOL;
+    AlarmLight AT %QX0.1 : BOOL;
+    SystemReady AT %QX0.2 : BOOL;
+END_VAR
+
+// Run the safety control logic
+CarWashCtrl(
+    CarPresentSensor := CarPresentInput,
+    HumanDetectedSensor := HumanDetectedInput
+);
+
+// Map outputs
+WashMotor := CarWashCtrl.WashActive;
+AlarmLight := CarWashCtrl.AlarmActive;
+SystemReady := CarWashCtrl.SafeToRun;
