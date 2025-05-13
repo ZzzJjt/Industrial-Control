@@ -1,8 +1,46 @@
-**Motor Interlock Function Block Diagram:**
+[Equipment1Running] -->| NOT |\
+                        AND   => [AllowStart := TRUE]
+[Equipment2Running] -->| NOT |/
+                        AND
+[Equipment3Running] -->| NOT |
 
-Design a motor interlock as a function block diagram that prevents the motor from starting while other associated equipment is still running. The interlock should monitor the operational status of surrounding equipment and block the motor start command if any equipment is still active. Include inputs from sensors or status indicators and outputs that control the motor start circuit.
 
-Provide the implementation of the MotorInterlock function block in IEC 61131-3 Structured Text. This function block should check the statuses of relevant equipment (e.g., EquipmentRunning), and if all equipment is stopped, it should allow the motor to start by setting the output to TRUE. If any equipment is still running, the output should remain FALSE, preventing the motor from starting.
+FUNCTION_BLOCK MotorInterlock
+VAR_INPUT
+    Equipment1Running: BOOL;  // Status of equipment 1
+    Equipment2Running: BOOL;  // Status of equipment 2
+    Equipment3Running: BOOL;  // Status of equipment 3
+END_VAR
 
-Discuss the role of motor interlocks in industrial safety and how this logic prevents premature or unsafe motor operation.
+VAR_OUTPUT
+    AllowStart: BOOL;        // TRUE if it's safe to start the motor
+END_VAR
+
+// Interlock logic
+AllowStart :=
+    NOT Equipment1Running AND
+    NOT Equipment2Running AND
+    NOT Equipment3Running;
+END_FUNCTION_BLOCK
+
+PROGRAM PLC_PRG
+VAR
+    MotorInterlock_1: MotorInterlock;
+    MotorStartButton: BOOL := FALSE;
+    MotorRunning: BOOL := FALSE;
+END_VAR
+
+// Call function block
+MotorInterlock_1(
+    Equipment1Running := PumpRunning,
+    Equipment2Running := ConveyorMoving,
+    Equipment3Running := AgitatorActive
+);
+
+// Only allow motor start if interlock permits
+IF MotorStartButton AND MotorInterlock_1.AllowStart THEN
+    MotorRunning := TRUE;
+END_IF;
+
+// Additional logic for stopping the motor...
 
