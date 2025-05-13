@@ -1,179 +1,99 @@
-(* Program: ELEVATOR_CONTROL
-   Purpose: Controls a 5-floor elevator system with position detection, door timing, and call request handling.
-   Features:
-   - Detects elevator position using top and bottom limit switches
-   - Manages door open/close with 7s initial open and 10s reopen if no cabin request
-   - Prioritizes floor calls and cabin requests in current direction
-   - Ensures safety with door-open motion prevention and idle state
+(* P&I Diagram: Distillation Column C-101 *)
+(* Description: Text-based representation of a distillation column with control loops and safety interlocks *)
+(* Components and Tagnames: *)
+(* - C-101: Distillation Column *)
+(* - E-101: Reboiler *)
+(* - E-102: Condenser *)
+(* - LT-101: Level Transmitter (Bottoms Level) *)
+(* - PT-101: Pressure Transmitter (Column Top) *)
+(* - TT-101: Temperature Transmitter (Reboiler Outlet) *)
+(* - FV-101: Feed Valve (Inlet to C-101) *)
+(* - PRV-101: Pressure Relief Valve (Top of C-101) *)
+(* - RV-101: Reboiler Supply Valve (Steam to E-101) *)
+
+(* P&I Diagram (Text-Based) *)
+(*
+  [Feed Stream] ----> [FV-101] ----> [C-101: Distillation Column]
+                                     |
+                                     | (Vapor) ----> [E-102: Condenser]
+                                     |                  |
+                                     |                  | [Distillate Out]
+                                     | (Pressure) <---- [PT-101]
+                                     |                  |
+                                     |                  | ----> [PRV-101] ----> [Relief Line]
+                                     |
+                                     | (Liquid) ----> [E-101: Reboiler]
+                                     |                  |
+                                     |                  | [Bottoms Out]
+                                     | (Level) <------- [LT-101]
+                                     |                  |
+                                     | (Temperature) <-- [TT-101]
+                                     |                  |
+                                     |                  | <---- [RV-101] <---- [Steam Supply]
 *)
 
-PROGRAM ELEVATOR_CONTROL
+(* Control Loops *)
+(* - LC-101: LT-101 controls bottoms level by adjusting bottoms outlet valve (not shown). *)
+(* - PC-101: PT-101 modulates PRV-101 for pressure control (interlock override). *)
+(* - TC-101: TT-101 regulates RV-101 for reboiler temperature control (interlock override). *)
+(* - FC-101: Feed flow controlled by FV-101 (interlock override). *)
+
+(* Safety Interlocks *)
+(* - Close FV-101 if PT-101 < 50 psi (prevent vacuum conditions). *)
+(* - Open PRV-101 if PT-101 > 120 psi (prevent overpressure). *)
+(* - Close RV-101 if TT-101 > 180°C (prevent overheating). *)
+(* - Trigger high-level alarm if LT-101 > 90% (prevent flooding). *)
+
+(* IEC 61131-3 Structured Text Program *)
+PROGRAM DISTILLATION_COLUMN_INTERLOCKS
 VAR
     (* Inputs *)
-    UpCall : ARRAY[1..4] OF BOOL;        (* Up call buttons for floors 1-4 *)
-    DownCall : ARRAY[2..5] OF BOOL;      (* Down call buttons for floors 2-5 *)
-    CabinRequest : ARRAY[1..5] OF BOOL;  (* Cabin floor selection buttons *)
-    TopLimit : ARRAY[1..5] OF BOOL;      (* Top limit switch for each floor *)
-    BottomLimit : ARRAY[1..5] OF BOOL;   (* Bottom limit switch for each floor *)
+    PT_101 : REAL;          (* Pressure in psi, from PT-101 *)
+    TT_101 : REAL;          (* Temperature in °C, from TT-101 *)
+    LT_101 : REAL;          (* Level in %, from LT-101 *)
     
     (* Outputs *)
-    MoveUp : BOOL;                       (* Command to move elevator up *)
-    MoveDown : BOOL;                     (* Command to move elevator down *)
-    DoorOpen : BOOL;                     (* Command to open/close door *)
-    CurrentFloor : UINT := 1;            (* Current floor, 1-5 *)
-    Idle : BOOL := TRUE;                 (* TRUE when elevator is idle *)
+    FV_101 : BOOL;          (* Feed Valve: TRUE = Open, FALSE = Closed *)
+    PRV_101 : BOOL;         (* Pressure Relief Valve: TRUE = Open, FALSE = Closed *)
+    RV_101 : BOOL;          (* Reboiler Supply Valve: TRUE = Open, FALSE = Closed *)
+    HIGH_LEVEL_ALARM : BOOL; (* High Level Alarm: TRUE = Active *)
     
-    (* Internal variables *)
-    GoingUp : BOOL;                      (* TRUE if moving up, FALSE if down *)
-    DoorTimer1 : TON;                    (* 7s timer for initial door open *)
-    DoorTimer2 : TON;                    (* 10s timer for reopen *)
-    AnyCabinButtonPressed : BOOL;         (* TRUE if any cabin button is pressed *)
-    TargetFloor : UINT;                  (* Next floor to service *)
-    HasPendingCalls : BOOL;              (* TRUE if any calls are pending *)
-    i : UINT;                            (* Loop index *)
+    (* Internal Variables *)
+    PRESSURE_LOW_LIMIT : REAL := 50.0;    (* Low pressure threshold, psi *)
+    PRESSURE_HIGH_LIMIT : REAL := 120.0;  (* High pressure threshold, psi *)
+    TEMP_LIMIT : REAL := 180.0;           (* High temperature threshold, °C *)
+    LEVEL_ALARM_LIMIT : REAL := 90.0;     (* High level alarm threshold, % *)
 END_VAR
 
 (* Initialize outputs *)
-MoveUp := FALSE;
-MoveDown := FALSE;
-DoorOpen := FALSE;
-Idle := TRUE;
+FV_101 := TRUE;      (* Feed valve initially open *)
+PRV_101 := FALSE;    (* Relief valve initially closed *)
+RV_101 := TRUE;      (* Reboiler valve initially open *)
+HIGH_LEVEL_ALARM := FALSE;
 
-(* Main logic *)
-(* Step 1: Determine current floor based on limit switches *)
-FOR i := 1 TO 5 DO
-    IF TopLimit[i] AND BottomLimit[i] THEN
-        CurrentFloor := i;
-        EXIT;
-    END_IF
-END_FOR
-
-(* Step 2: Check for pending calls *)
-HasPendingCalls := FALSE;
-FOR i := 1 TO 4 DO
-    IF UpCall[i] THEN HasPendingCalls := TRUE; END_IF
-END_FOR
-FOR i := 2 TO 5 DO
-    IF DownCall[i] THEN HasPendingCalls := TRUE; END_IF
-END_FOR
-FOR i := 1 TO 5 DO
-    IF CabinRequest[i] THEN HasPendingCalls := TRUE; END_IF
-END_FOR
-
-(* Step 3: Door control and state management *)
-IF TopLimit[CurrentFloor] AND BottomLimit[CurrentFloor] THEN
-    (* Elevator is at a floor *)
-    Idle := FALSE;
-    MoveUp := FALSE;
-    MoveDown := FALSE;
-    
-    (* Open door and start initial timer *)
-    DoorOpen := TRUE;
-    DoorTimer1(IN := TRUE, PT := T#7s);
-    
-    (* Check if any cabin button is pressed *)
-    AnyCabinButtonPressed := FALSE;
-    FOR i := 1 TO 5 DO
-        IF CabinRequest[i] THEN
-            AnyCabinButtonPressed := TRUE;
-            EXIT;
-        END_IF
-    END_FOR
-    
-    (* Handle door timing *)
-    IF DoorTimer1.Q THEN
-        IF NOT AnyCabinButtonPressed THEN
-            (* No cabin button pressed, reopen for 10s *)
-            DoorTimer2(IN := TRUE, PT := T#10s);
-            IF DoorTimer2.Q THEN
-                DoorOpen := FALSE;
-                DoorTimer1(IN := FALSE);
-                DoorTimer2(IN := FALSE);
-            END_IF
-        ELSE
-            (* Cabin button pressed, close door *)
-            DoorOpen := FALSE;
-            DoorTimer1(IN := FALSE);
-            DoorTimer2(IN := FALSE);
-        END_IF
-    END_IF
-ELSE
-    (* Elevator is between floors *)
-    DoorOpen := FALSE;
-    DoorTimer1(IN := FALSE);
-    DoorTimer2(IN := FALSE);
+(* Interlock Logic *)
+(* Interlock 1: Close FV-101 if PT-101 < 50 psi *)
+IF PT_101 < PRESSURE_LOW_LIMIT THEN
+    FV_101 := FALSE;
 END_IF
 
-(* Step 4: Movement and direction logic *)
-IF NOT DoorOpen AND HasPendingCalls THEN
-    (* Determine target floor *)
-    TargetFloor := 0;
-    IF GoingUp THEN
-        (* Service calls above current floor *)
-        FOR i := CurrentFloor + 1 TO 5 DO
-            IF CabinRequest[i] OR (i < 5 AND UpCall[i]) OR DownCall[i] THEN
-                TargetFloor := i;
-                EXIT;
-            END_IF
-        END_FOR
-        IF TargetFloor = 0 THEN
-            (* No calls above, check below and reverse direction *)
-            FOR i := CurrentFloor - 1 DOWNTO 1 DO
-                IF CabinRequest[i] OR UpCall[i] OR (i > 1 AND DownCall[i]) THEN
-                    TargetFloor := i;
-                    GoingUp := FALSE;
-                    EXIT;
-                END_IF
-            END_FOR
-        END_IF
-    ELSE
-        (* Service calls below current floor *)
-        FOR i := CurrentFloor - 1 DOWNTO 1 DO
-            IF CabinRequest[i] OR UpCall[i] OR (i > 1 AND DownCall[i]) THEN
-                TargetFloor := i;
-                EXIT;
-            END_IF
-        END_FOR
-        IF TargetFloor = 0 THEN
-            (* No calls below, check above and reverse direction *)
-            FOR i := CurrentFloor + 1 TO 5 DO
-                IF CabinRequest[i] OR (i < 5 AND UpCall[i]) OR DownCall[i] THEN
-                    TargetFloor := i;
-                    GoingUp := TRUE;
-                    EXIT;
-                END_IF
-            END_FOR
-        END_IF
-    END_IF
-    
-    (* Move to target floor *)
-    IF TargetFloor > 0 THEN
-        IF TargetFloor > CurrentFloor THEN
-            MoveUp := TRUE;
-            MoveDown := FALSE;
-            GoingUp := TRUE;
-        ELSIF TargetFloor < CurrentFloor THEN
-            MoveUp := FALSE;
-            MoveDown := TRUE;
-            GoingUp := FALSE;
-        END_IF
-    END_IF
+(* Interlock 2: Open PRV-101 if PT-101 > 120 psi *)
+IF PT_101 > PRESSURE_HIGH_LIMIT THEN
+    PRV_101 := TRUE;
 ELSE
-    (* No pending calls or door open *)
-    MoveUp := FALSE;
-    MoveDown := FALSE;
-    Idle := NOT DoorOpen AND NOT HasPendingCalls;
+    PRV_101 := FALSE;
 END_IF
 
-(* Step 5: Clear served requests *)
-IF TopLimit[CurrentFloor] AND BottomLimit[CurrentFloor] THEN
-    CabinRequest[CurrentFloor] := FALSE;
-    IF CurrentFloor < 5 THEN
-        UpCall[CurrentFloor] := FALSE;
-    END_IF
-    IF CurrentFloor > 1 THEN
-        DownCall[CurrentFloor] := FALSE;
-    END_IF
+(* Interlock 3: Close RV-101 if TT-101 > 180°C *)
+IF TT_101 > TEMP_LIMIT THEN
+    RV_101 := FALSE;
+END_IF
+
+(* Interlock 4: Trigger high-level alarm if LT-101 > 90% *)
+IF LT_101 > LEVEL_ALARM_LIMIT THEN
+    HIGH_LEVEL_ALARM := TRUE;
+ELSE
+    HIGH_LEVEL_ALARM := FALSE;
 END_IF
 
 END_PROGRAM
