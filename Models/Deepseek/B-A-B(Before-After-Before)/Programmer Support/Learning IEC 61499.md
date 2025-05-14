@@ -1,4 +1,32 @@
-**Learning IEC 61499:**
-Provide a concise introduction to the IEC 61499 programming language, emphasizing key concepts for someone already familiar with IEC 61131-3. Include a comparison of their fundamental differences in terms of architecture, execution models, and flexibility for distributed control systems. Additionally, compile a list of five key references for further reading on IEC 61499, highlighting its relevance in modern industrial applications.
+PROGRAM PLC_PRG
+VAR
+    TempSensor: REAL := 0.0;        // Input: current temperature
+    SetPoint: REAL := 70.0;         // Configuration parameter
+    Heater_ON: BOOL := FALSE;       // Output: heater status
+END_VAR
 
+// Main logic (runs cyclically)
+IF TempSensor < SetPoint THEN
+    Heater_ON := TRUE;
+ELSE
+    Heater_ON := FALSE;
+END_IF;
+
+FUNCTION_BLOCK TempSensor_FB
+VAR_IN_OUT
+END_VAR
+VAR_OUTPUT
+    temperature: REAL := 0.0;
+END_VAR
+EVENT_OUTPUT
+    DataReady: EVENT;
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK Heater_FB
+VAR_INPUT
+    enable: BOOL := FALSE;
+END_VAR
+EVENT_INPUT
+    Command: EVENT;
+END_FUNCTION_BLOCK
 
