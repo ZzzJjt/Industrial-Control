@@ -1,68 +1,134 @@
-**Fix Traffic Light Code:**
+TYPE E_TrafficState:
+    (
+    NORMAL,
+    TO_YELLOW,
+    TO_RED,
+    PEDESTRIAN,
+    EMERGENCY
+    ) INT;
+END_TYPE
 
-Can you find the error in the following 61131-3 ST code: PROGRAM TrafficLightControl VAR pedestrianButtonPressed: BOOL; emergencyVehicleApproaching: BOOL; greenLightOn: BOOL; yellowLightOn: BOOL; redLightOn: BOOL; timer: TON; // timer to control the duration of green and yellow lights END_VAR
 
-// Initialize the program greenLightOn := TRUE; yellowLightOn := FALSE; redLightOn := FALSE; timer(IN := NOT emergencyVehicleApproaching, PT := T#5s);
+PROGRAM PLC_PRG
+VAR
+    // Inputs
+    pedestrianButtonPressed : BOOL := FALSE; // From input signal
+    emergencyVehicleDetected : BOOL := FALSE; // From sensor/detection system
 
-// Main program loop WHILE TRUE DO // Check for pedestrian button press pedestrianButtonPressed := ReadPedestrianButton();
+    // Timers
+    trafficTimer      : TON; // Timer for phases
+    pedWaitTimer      : TON; // Timer for pedestrian waiting
+    emergencyHoldTime : TON; // Hold in emergency mode
 
-// Check for emergency vehicle approaching
-emergencyVehicleApproaching := ReadEmergencyVehicleSensor();
+    // State tracking
+    currentState : E_TrafficState := E_TrafficState.NORMAL;
+    nextState    : E_TrafficState := E_TrafficState.NORMAL;
 
-IF emergencyVehicleApproaching THEN
-    // Turn off all lights and turn on green light for emergency vehicle
-    greenLightOn := TRUE;
-    yellowLightOn := FALSE;
-    redLightOn := FALSE;
-    timer(IN := FALSE);
+    // Edge detection
+    btnPedEdge : R_TRIG;
+    btnEmergEdge : R_TRIG;
 
-ELSEIF pedestrianButtonPressed THEN
-    // Turn off all lights and turn on red light and pedestrian light
-    greenLightOn := FALSE;
-    yellowLightOn := FALSE;
-    redLightOn := TRUE;
-    timer(IN := FALSE);
+    // Outputs
+    lightNS_Red    : BOOL := FALSE;
+    lightNS_Yellow : BOOL := FALSE;
+    lightNS_Green  : BOOL := FALSE;
+    lightEW_Red    : BOOL := FALSE;
+    lightEW_Yellow : BOOL := FALSE;
+    lightEW_Green  : BOOL := FALSE;
+    crosswalkLight : BOOL := FALSE;
+END_VAR
 
-    // Wait for pedestrian to cross
-    WAIT UNTIL NOT pedestrianButtonPressed;
+btnPedEdge(CLK := pedestrianButtonPressed);
+btnEmergEdge(CLK := emergencyVehicleDetected);
 
-    // Turn on yellow light for warning and start the timer
-    yellowLightOn := TRUE;
-    redLightOn := FALSE;
-    timer(IN := NOT emergencyVehicleApproaching);
+CASE currentState OF
 
-ELSE
-    // Check the timer and switch to the next light if it's time
-    IF timer.Q THEN
-        IF greenLightOn THEN
-            greenLightOn := FALSE;
-            yellowLightOn := TRUE;
-            timer(IN := NOT emergencyVehicleApproaching);
+    // --- STATE: NORMAL ---
+    E_TrafficState.NORMAL:
+        lightNS_Red := FALSE;
+        lightNS_Yellow := FALSE;
+        lightNS_Green := TRUE;
+        lightEW_Red := TRUE;
+        lightEW_Yellow := FALSE;
+        lightEW_Green := FALSE;
+        crosswalkLight := FALSE;
 
-        ELSEIF yellowLightOn THEN
-            yellowLightOn := FALSE;
-            redLightOn := TRUE;
-            timer(IN := FALSE);
-
-        ELSE // red light is on
-            redLightOn := FALSE;
-            greenLightOn := TRUE;
-            timer(IN := NOT emergencyVehicleApproaching);
+        IF btnPedEdge.Q THEN
+            nextState := E_TrafficState.TO_YELLOW;
+            trafficTimer(IN := TRUE, PT := T#5s); // NS Green -> Yellow
+        ELSIF btnEmergEdge.Q THEN
+            nextState := E_TrafficState.EMERGENCY;
         END_IF;
-    END_IF;
-END_IF;
 
-// Set the traffic lights based on the variables
-SetTrafficLights(greenLightOn, yellowLightOn, redLightOn);
+    // --- STATE: TO_YELLOW (Green -> Red) ---
+    E_TrafficState.TO_YELLOW:
+        lightNS_Red := FALSE;
+        lightNS_Yellow := TRUE;
+        lightNS_Green := FALSE;
+        lightEW_Red := TRUE;
+        lightEW_Yellow := FALSE;
+        lightEW_Green := FALSE;
+        crosswalkLight := FALSE;
 
-// Wait for a short time before checking again
-DELAY 100ms;
+        trafficTimer(IN := TRUE, PT := T#2s);
 
-END_WHILE
+        IF trafficTimer.Q THEN
+            trafficTimer(IN := FALSE);
+            nextState := E_TrafficState.TO_RED;
+        END_IF;
 
-// Read the pedestrian button state from an input FUNCTION ReadPedestrianButton: BOOL // Code to read the input goes here END_FUNCTION
+    // --- STATE: TO_RED (Yellow -> Red, then wait for pedestrian) ---
+    E_TrafficState.TO_RED:
+        lightNS_Red := TRUE;
+        lightNS_Yellow := FALSE;
+        lightNS_Green := FALSE;
+        lightEW_Red := TRUE;
+        lightEW_Yellow := FALSE;
+        lightEW_Green := FALSE;
+        crosswalkLight := FALSE;
 
-// Read the emergency vehicle sensor state from an input FUNCTION ReadEmergencyVehicleSensor: BOOL // Code to read the input goes here END_FUNCTION
+        trafficTimer(IN := TRUE, PT := T#3s);
 
-// Set the traffic lights based on the variables PROCEDURE SetTrafficLights( green: BOOL; yellow: BOOL; red: BOOL ) // Code to set the traffic lights goes here END_PROCEDURE
+        IF trafficTimer.Q THEN
+            trafficTimer(IN := FALSE);
+            nextState := E_TrafficState.PEDESTRIAN;
+        END_IF;
 
+    // --- STATE: PEDESTRIAN (Allow safe crossing) ---
+    E_TrafficState.PEDESTRIAN:
+        lightNS_Red := TRUE;
+        lightNS_Yellow := FALSE;
+        lightNS_Green := FALSE;
+        lightEW_Red := FALSE;
+        lightEW_Yellow := FALSE;
+        lightEW_Green := TRUE;
+        crosswalkLight := TRUE;
+
+        trafficTimer(IN := TRUE, PT := T#10s);
+
+        IF trafficTimer.Q THEN
+            trafficTimer(IN := FALSE);
+            nextState := E_TrafficState.NORMAL;
+        END_IF;
+
+    // --- STATE: EMERGENCY (Override all other logic) ---
+    E_TrafficState.EMERGENCY:
+        lightNS_Red := TRUE;
+        lightNS_Yellow := FALSE;
+        lightNS_Green := FALSE;
+        lightEW_Red := TRUE;
+        lightEW_Yellow := FALSE;
+        lightEW_Green := FALSE;
+        crosswalkLight := FALSE;
+
+        emergencyHoldTime(IN := NOT emergencyVehicleDetected, PT := T#5s);
+
+        IF emergencyHoldTime.Q THEN
+            emergencyHoldTime(IN := FALSE);
+            nextState := E_TrafficState.NORMAL;
+        END_IF;
+
+END_CASE;
+
+// Update current state
+currentState := nextState;
