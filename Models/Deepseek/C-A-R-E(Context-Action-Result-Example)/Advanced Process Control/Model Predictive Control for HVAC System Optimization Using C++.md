@@ -1,131 +1,134 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.integrate import odeint
+#include <iostream>
+#include <vector>
+#include <cmath>
 
-# Process parameters
-feed_rate = 50  # tons/hour
-tank_capacity = 1000  # m^3
-upstream_delay = 2 * 3600  # seconds (2 hours)
+using namespace std;
 
-# Simulation settings
-time_end = 48 * 3600  # seconds (48 hours)
-dt = 60  # seconds (1 minute)
-time_points = np.arange(0, time_end + dt, dt)
+// Constants
+const double dt = 1.0; // Time step (minutes)
+const int horizon = 60; // Prediction horizon (time steps)
 
-# Demand profile
-demand_base = 45  # tons/hour
-demand_spike_start = 18 * 3600  # seconds (18 hours)
-demand_spike_duration = 6 * 3600  # seconds (6 hours)
-demand_spike_magnitude = 60  # tons/hour
+// Parameters
+double T_setpoint = 22.0; // Desired temperature (Celsius)
+double H_setpoint = 50.0; // Desired humidity (%)
+double T_outdoor_initial = 15.0; // Initial outdoor temperature (Celsius)
+double H_outdoor_initial = 45.0; // Initial outdoor humidity (%)
+double occupancy_initial = 1.0; // Initial occupancy level (normalized between 0 and 1)
+double alpha_T = 0.05; // Temperature change coefficient
+double alpha_H = 0.03; // Humidity change coefficient
+double beta_T = 0.1; // Outdoor influence on temperature
+double beta_H = 0.08; // Outdoor influence on humidity
+double gamma_T = 0.2; // Occupancy influence on temperature
+double gamma_H = 0.15; // Occupancy influence on humidity
 
-def demand_profile(t):
-    if demand_spike_start <= t < demand_spike_start + demand_spike_duration:
-        return demand_spike_magnitude
-    else:
-        return demand_base
+// State variables
+struct State {
+    double T_indoor;
+    double H_indoor;
+};
 
-# Tank dynamics model
-def tank_dynamics(y, t, u):
-    dhdt = (u - demand_profile(t)) / tank_capacity
-    return dhdt
+// Control inputs
+struct Control {
+    double Q_heating_cooling; // Heating/Cooling power (kW)
+    double Q_humid_dehumid; // Humidification/Dehumidification power (kW)
+};
 
-# PID Controller
-class PIDController:
-    def __init__(self, Kp, Ki, Kd, setpoint):
-        self.Kp = Kp
-        self.Ki = Ki
-        self.Kd = Kd
-        self.setpoint = setpoint
-        self.error_integral = 0
-        self.last_error = 0
+// Dynamic model of the HVAC system
+State dynamic_model(State state, Control control, double T_outdoor, double H_outdoor, double occupancy) {
+    State next_state;
+    next_state.T_indoor = state.T_indoor + dt * (alpha_T * (T_setpoint - state.T_indoor) +
+                                                beta_T * (T_outdoor - state.T_indoor) +
+                                                gamma_T * occupancy -
+                                                control.Q_heating_cooling);
+    next_state.H_indoor = state.H_indoor + dt * (alpha_H * (H_setpoint - state.H_indoor) +
+                                                beta_H * (H_outdoor - state.H_indoor) +
+                                                gamma_H * occupancy -
+                                                control.Q_humid_dehumid);
+    return next_state;
+}
 
-    def update(self, measured_value, dt):
-        error = self.setpoint - measured_value
-        self.error_integral += error * dt
-        derivative = (error - self.last_error) / dt
-        output = self.Kp * error + self.Ki * self.error_integral + self.Kd * derivative
-        self.last_error = error
-        return output
+// Objective function: minimize deviation from setpoints and energy consumption
+double objective_function(const vector<State>& states, const vector<Control>& controls) {
+    double cost = 0.0;
+    for (size_t i = 0; i < states.size(); ++i) {
+        cost += pow(states[i].T_indoor - T_setpoint, 2) + pow(states[i].H_indoor - H_setpoint, 2) + 
+                0.1 * (controls[i].Q_heating_cooling * controls[i].Q_heating_cooling + 
+                       controls[i].Q_humid_dehumid * controls[i].Q_humid_dehumid);
+    }
+    return cost;
+}
 
-# MPC Controller
-class MPCController:
-    def __init__(self, horizon, timestep, setpoint):
-        self.horizon = horizon
-        self.timestep = timestep
-        self.setpoint = setpoint
+// MPC controller
+Control mpc_control(State current_state, double T_outdoor, double H_outdoor, double occupancy) {
+    Control best_control;
+    double min_cost = numeric_limits<double>::max();
 
-    def predict(self, current_level, u_prev):
-        predictions = []
-        h = current_level
-        for _ in range(self.horizon):
-            h = odeint(tank_dynamics, h, [0, self.timestep], args=(u_prev[-1],))[1][0]
-            predictions.append(h)
-        return predictions
+    // Try different control actions
+    for (double q_heat_cool = -1.0; q_heat_cool <= 1.0; q_heat_cool += 0.2) {
+        for (double q_humid_dehumid = -1.0; q_humid_dehumid <= 1.0; q_humid_dehumid += 0.2) {
+            Control trial_control = {q_heat_cool, q_humid_dehumid};
+            vector<State> predicted_states(horizon);
+            predicted_states[0] = current_state;
 
-    def calculate_control(self, current_level, u_prev):
-        cost_min = float('inf')
-        best_u = None
-        for u in np.linspace(demand_base, feed_rate, 10):  # Discretize possible inputs
-            predictions = self.predict(current_level, u_prev + [u])
-            cost = sum((h - self.setpoint) ** 2 for h in predictions)
-            if cost < cost_min:
-                cost_min = cost
-                best_u = u
-        return best_u
+            // Simulate future states
+            for (int t = 1; t < horizon; ++t) {
+                predicted_states[t] = dynamic_model(predicted_states[t-1], trial_control, T_outdoor, H_outdoor, occupancy);
+            }
 
-# Initialize controllers
-pid_controller = PIDController(Kp=1.0, Ki=0.1, Kd=0.01, setpoint=0.7 * tank_capacity)
-mpc_controller = MPCController(horizon=int(upstream_delay / dt), timestep=dt, setpoint=0.7 * tank_capacity)
+            // Evaluate cost
+            double cost = objective_function(predicted_states, vector<Control>(horizon, trial_control));
+            if (cost < min_cost) {
+                min_cost = cost;
+                best_control = trial_control;
+            }
+        }
+    }
+    return best_control;
+}
 
-# Simulation loop
-h_pid = [0.7 * tank_capacity]  # Initial tank level
-h_mpc = [0.7 * tank_capacity]  # Initial tank level
-u_pid = []
-u_mpc = []
+int main() {
+    // Initial conditions
+    State state = {22.0, 50.0}; // Start at setpoints
+    double T_outdoor = T_outdoor_initial;
+    double H_outdoor = H_outdoor_initial;
+    double occupancy = occupancy_initial;
 
-for i in range(1, len(time_points)):
-    t = time_points[i]
+    // Simulation loop
+    vector<double> time_points;
+    vector<double> T_indoor_history;
+    vector<double> H_indoor_history;
+    vector<double> Q_heat_cool_history;
+    vector<double> Q_humid_dehumid_history;
 
-    # PID control action
-    pid_output = pid_controller.update(h_pid[-1], dt)
-    u_pid_next = max(min(pid_output + demand_profile(t), feed_rate), demand_base)
-    u_pid.append(u_pid_next)
-    
-    # Simulate delay in input for PID
-    if i >= int(upstream_delay / dt):
-        u_pid_real = u_pid[i - int(upstream_delay / dt)]
-    else:
-        u_pid_real = demand_profile(t)
+    for (double t = 0.0; t <= 24 * 60; t += dt) {
+        // Measure external conditions and occupancy (simple sinusoidal variation for demonstration)
+        T_outdoor = T_outdoor_initial + 5.0 * sin(0.01 * t);
+        H_outdoor = H_outdoor_initial + 5.0 * cos(0.01 * t);
+        occupancy = occupancy_initial + 0.5 * sin(0.02 * t);
 
-    # Update tank level using ODE solver for PID
-    new_h_pid = odeint(tank_dynamics, h_pid[-1], [0, dt], args=(u_pid_real,))[1][0]
-    h_pid.append(new_h_pid)
+        // Apply MPC control
+        Control control = mpc_control(state, T_outdoor, H_outdoor, occupancy);
 
-    # MPC control action
-    mpc_output = mpc_controller.calculate_control(h_mpc[-1], u_mpc)
-    u_mpc.append(mpc_output)
-    
-    # Simulate delay in input for MPC
-    if i >= int(upstream_delay / dt):
-        u_mpc_real = u_mpc[i - int(upstream_delay / dt)]
-    else:
-        u_mpc_real = demand_profile(t)
+        // Update state using the control action
+        state = dynamic_model(state, control, T_outdoor, H_outdoor, occupancy);
 
-    # Update tank level using ODE solver for MPC
-    new_h_mpc = odeint(tank_dynamics, h_mpc[-1], [0, dt], args=(u_mpc_real,))[1][0]
-    h_mpc.append(new_h_mpc)
+        // Store data for plotting
+        time_points.push_back(t);
+        T_indoor_history.push_back(state.T_indoor);
+        H_indoor_history.push_back(state.H_indoor);
+        Q_heat_cool_history.push_back(control.Q_heating_cooling);
+        Q_humid_dehumid_history.push_back(control.Q_humid_dehumid);
+    }
 
-# Plot results
-plt.figure(figsize=(14, 7))
-plt.plot(time_points / 3600, h_pid, label='PID Controlled Level', linewidth=2)
-plt.plot(time_points / 3600, h_mpc, label='MPC Controlled Level', linewidth=2)
-plt.axhline(0.7 * tank_capacity, color='r', linestyle='--', label='Setpoint')
-plt.xlabel('Time (hours)')
-plt.ylabel('Tank Level (m³)')
-plt.title('Buffer Tank Levels with PID and MPC Controllers')
-plt.legend()
-plt.grid(True)
-plt.show()
+    // Plot results (simple console output for demonstration)
+    cout << "Time\tT_indoor\tH_indoor\tQ_heat_cool\tQ_humid_dehumid\n";
+    for (size_t i = 0; i < time_points.size(); ++i) {
+        cout << time_points[i] << "\t" << T_indoor_history[i] << "\t" << H_indoor_history[i] << "\t"
+             << Q_heat_cool_history[i] << "\t" << Q_humid_dehumid_history[i] << "\n";
+    }
+
+    return 0;
+}
 
 
 
