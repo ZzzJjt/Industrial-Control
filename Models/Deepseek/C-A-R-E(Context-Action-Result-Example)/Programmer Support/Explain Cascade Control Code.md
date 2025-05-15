@@ -1,52 +1,84 @@
-**Explain Cascade Control Code:**
-
-Explain the following code: PROGRAM CascadeControl VAR // Primary loop variables PV1: REAL; // Process variable: vessel pressure SP1: REAL; // Setpoint: target pressure OP1: REAL; // Output: secondary loop setpoint Kp1: REAL := 1.0; // Proportional gain Ki1: REAL := 0.1; // Integral gain Kd1: REAL := 0.05; // Derivative gain e1, e1_prev, e1_sum, e1_diff: REAL;
-
-// Secondary loop variables
-PV2: REAL; // Process variable: flow rate
-SP2: REAL; // Setpoint: target flow rate (OP1)
-OP2: REAL; // Output: control valve position
-Kp2: REAL := 2.0; // Proportional gain
-Ki2: REAL := 0.2; // Integral gain
-Kd2: REAL := 0.1; // Derivative gain
-e2, e2_prev, e2_sum, e2_diff: REAL;
-
-dt: TIME := t#100ms; // Sample time
-t_last: TIME;
+PROGRAM CascadeControlVesselPressure
+VAR_INPUT
+    PV1 : REAL; // Measured vessel pressure
+    PV2 : REAL; // Measured flow rate
 END_VAR
 
-METHOD RunCascadeControl // Read current pressure and flow rate values PV1 := ReadPressure(); PV2 := ReadFlowRate();
-// Primary loop: pressure control
-e1 := SP1 - PV1;
-e1_sum := e1_sum + e1 * dt;
-e1_diff := (e1 - e1_prev) / dt;
-OP1 := Kp1 * e1 + Ki1 * e1_sum + Kd1 * e1_diff;
-e1_prev := e1;
+VAR_OUTPUT
+    OP2 : REAL; // Output to drive the valve (% open)
+END_VAR
 
-// Limit OP1 to a valid range
-IF OP1 > 100.0 THEN
-    OP1 := 100.0;
-ELSIF OP1 < 0.0 THEN
-    OP1 := 0.0;
+VAR
+    // Primary Loop Variables
+    SP1 : REAL := 10.0; // Desired setpoint for vessel pressure
+    Kp1 : REAL := 2.0;
+    Ki1 : REAL := 0.5;
+    Kd1 : REAL := 0.1;
+    e1 : REAL;
+    e1_sum : REAL := 0.0;
+    e1_prev : REAL := 0.0;
+    OP1 : REAL;
+
+    // Secondary Loop Variables
+    SP2 : REAL;
+    Kp2 : REAL := 3.0;
+    Ki2 : REAL := 0.8;
+    Kd2 : REAL := 0.2;
+    e2 : REAL;
+    e2_sum : REAL := 0.0;
+    e2_prev : REAL := 0.0;
+
+    // Sampling Time
+    dt : TIME := T#100ms;
+
+    // Output Clamping Limits
+    Min_Output : REAL := 0.0;
+    Max_Output : REAL := 100.0;
+END_VAR
+
+// PRIMARY LOOP: Pressure Control
+e1 := SP1 - PV1;
+e1_sum := e1_sum + e1 * TD_TO_S(dt);
+e1_diff := (e1 - e1_prev) / TD_TO_S(dt);
+OP1 := Kp1 * e1 + Ki1 * e1_sum + Kd1 * e1_diff;
+
+// Clamp OP1 to [Min_Output, Max_Output]
+IF OP1 > Max_Output THEN
+    OP1 := Max_Output;
+ELSIF OP1 < Min_Output THEN
+    OP1 := Min_Output;
 END_IF;
 
-// Secondary loop: flow control
+// Assign OP1 as the setpoint for the secondary loop
 SP2 := OP1;
+
+// SECONDARY LOOP: Flow Control
 e2 := SP2 - PV2;
-e2_sum := e2_sum + e2 * dt;
-e2_diff := (e2 - e2_prev) / dt;
+e2_sum := e2_sum + e2 * TD_TO_S(dt);
+e2_diff := (e2 - e2_prev) / TD_TO_S(dt);
 OP2 := Kp2 * e2 + Ki2 * e2_sum + Kd2 * e2_diff;
+
+// Clamp OP2 to [Min_Output, Max_Output]
+IF OP2 > Max_Output THEN
+    OP2 := Max_Output;
+ELSIF OP2 < Min_Output THEN
+    OP2 := Min_Output;
+END_IF;
+
+// Update previous errors for next iteration
+e1_prev := e1;
 e2_prev := e2;
 
-// Limit OP2 to a valid range
-IF OP2 > 100.0 THEN
-    OP2 := 100.0;
-ELSIF OP2 < 0.0 THEN
-    OP2 := 0.0;
-END_IF;
+// Inline comments explaining the logic:
+// The program implements a cascade control scheme for regulating vessel pressure using two PID loops.
+// The primary loop regulates the vessel pressure (PV1) by comparing it to the setpoint (SP1).
+// The PID controller calculates the error (e1), integral (e1_sum), and derivative (e1_diff) terms,
+// generating OP1 as the setpoint for the secondary loop.
+// The secondary loop regulates the flow rate (PV2) by comparing it to the setpoint (SP2 = OP1).
+// Another PID controller calculates the error (e2), integral (e2_sum), and derivative (e2_diff) terms,
+// generating OP2 as the valve position.
+// Both loops include anti-windup output clamping (0.0–100.0) to prevent saturation of valve commands.
+// A fixed sample time (dt := t#100ms) is used for integral and derivative calculations.
 
-// Set control valve position
-SetValvePosition(OP2);
-END_METHOD
 
-END_PROGRAM
+
