@@ -1,6 +1,39 @@
-**Empty Bottle Removal for Packaging Line Using 61131-3 Structured Text:**
+PROGRAM BottleRemovalControl
+VAR_INPUT
+    BottlePresentSensor : BOOL; // Detects the presence of a bottle
+    EmptyBottleSensor : BOOL;   // Detects whether the bottle is empty
+END_VAR
 
-Write a self-contained 61131-3 structured text (ST) program to automate the removal of empty bottles in a packaging line. After bottles are filled, they are transported by a conveyor toward the packaging station. The system includes two proximity sensors: one detects the presence of any bottle, and the second detects only empty bottles. When an empty bottle is detected, a pneumatic cylinder is activated to remove the empty bottle from the conveyor before it reaches the packaging area.
+VAR_OUTPUT
+    ConveyorMotor : BOOL := TRUE; // Keeps bottles moving toward the packaging station
+    EjectCylinder : BOOL;        // Pushes empty bottles off the conveyor
+END_VAR
 
-Ensure that the program controls the conveyor and cylinder operations efficiently, preventing any empty bottles from continuing to the packaging process, while maintaining smooth operation for filled bottles.
+VAR
+    EjectTimer : TON;            // Timer for activating the ejector cylinder
+END_VAR
+
+// Continuously run the conveyor motor
+ConveyorMotor := TRUE;
+
+// Eject logic for empty bottles
+IF BottlePresentSensor AND EmptyBottleSensor THEN
+    // Activate ejector for 0.5 seconds
+    EjectTimer(IN := TRUE, PT := T#500ms);
+    EjectCylinder := TRUE;
+ELSE
+    // Deactivate the ejector after the timer expires
+    EjectTimer(IN := FALSE);
+    IF NOT EjectTimer.Q THEN
+        EjectCylinder := FALSE;
+    END_IF;
+END_IF;
+
+// Inline comments explaining the logic:
+// The conveyor motor runs continuously.
+// If both sensors detect an empty bottle, activate the ejector for 0.5 seconds.
+// Filled bottles continue through the line uninterrupted.
+// A timer ensures the cylinder retracts after each ejection, preventing mechanical wear from constant actuation.
+
+
 
