@@ -1,6 +1,56 @@
-**Extended Cause & Process Action Matrix:**
+FUNCTION_BLOCK InterlockEvaluation
+VAR_INPUT
+    HighPressure : BOOL; // Input signal for high pressure condition
+    LowTemperature : BOOL; // Input signal for low temperature condition
+    LevelSensorFailure : BOOL; // Input signal for level sensor failure
+    AgitatorFault : BOOL; // Input signal for agitator fault
+    Overheating : BOOL; // Input signal for overheating condition
+    Underheating : BOOL; // Input signal for underheating condition
+    PressureSensorFault : BOOL; // Input signal for pressure sensor fault
+    TemperatureSensorFault : BOOL; // Input signal for temperature sensor fault
+    LevelOverflow : BOOL; // Input signal for level overflow condition
+END_VAR
 
-Develop an extended cause and process action matrix for the interlocks in a chemical reactor. Each row should represent a specific cause (e.g., sensor values exceeding limits), and the column headings should represent safety actions performed using actuators in the system. The matrix should illustrate how different causes trigger specific actions to ensure safe operation.
+VAR_OUTPUT
+    IsolateFeed : BOOL; // Output signal to isolate feed
+    ShutDownAgitator : BOOL; // Output signal to shut down agitator
+    ActivateReliefValve : BOOL; // Output signal to activate relief valve
+    StopHeatingSystem : BOOL; // Output signal to stop heating system
+    SafeShutdownSequence : BOOL; // Output signal to initiate safe shutdown sequence
+END_VAR
 
-Discuss how this extended matrix provides a clear mapping between potential hazardous situations and the corresponding safety actions. Emphasize the importance of designing interlocks that ensure safe and stable reactor operation, preventing risks such as overpressure, underheating, and process failures.
+// Main execution logic
+IsolateFeed := FALSE;
+ShutDownAgitator := FALSE;
+ActivateReliefValve := FALSE;
+StopHeatingSystem := FALSE;
+SafeShutdownSequence := FALSE;
+
+IF HighPressure THEN
+    IsolateFeed := TRUE;
+    ActivateReliefValve := TRUE;
+END_IF;
+
+IF LowTemperature THEN
+    ShutDownAgitator := TRUE;
+    StopHeatingSystem := TRUE;
+END_IF;
+
+IF LevelSensorFailure OR AgitatorFault OR PressureSensorFault OR TemperatureSensorFault THEN
+    SafeShutdownSequence := TRUE;
+END_IF;
+
+IF Overheating THEN
+    StopHeatingSystem := TRUE;
+END_IF;
+
+IF Underheating THEN
+    ShutDownAgitator := TRUE;
+END_IF;
+
+IF LevelOverflow THEN
+    ActivateReliefValve := TRUE;
+END_IF;
+
+
 
