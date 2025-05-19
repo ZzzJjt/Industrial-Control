@@ -1,3 +1,19 @@
-**Pneumatic System Control Using 61131-3 Structured Text:**
+Cause / Effect                  | Open FlowValve | Close FlowValve | Open ReliefValve | Set FlowError | Set PressureError | Set Error | Log Event
+--------------------------------|----------------|-----------------|------------------|---------------|------------------|-----------|-----------
+FlowInput < 50 SLPM             | X              |                 |                  |               |                  |           | X
+FlowInput ≥ 50 SLPM             |                | X               |                  |               |                  |           | X
+PressureInput < 5.5 or > 6.0    |                |                 | X                |               | X                |           | X
+PressureInput in 5.5–6.0        |                |                 |                  |               |                  |           | X
+ABS(FlowInput - 50) > 5.0       |                |                 |                  | X             |                  |           | X
+ABS(FlowInput - 50) ≤ 5.0       |                |                 |                  |               |                  |           | X
+Invalid Input (NaN, >1E6)       |                | X               |                  |               | X                | X (1)     | X
+Sensor Fault (Extendable)       |                | X               | X                |               | X                | X (2)     | X
 
-Write a self-contained 61131-3 structured text program (not a function block) to control a pneumatic system with a control loop frequency of 100 ms. The system should regulate the flow of air to actuators based on input signals, maintaining a flow rate of 50 standard liters per minute. The system must also ensure that the pressure remains within the specified range of 5.5 to 6 bar. Implement safety checks to handle any deviations in flow or pressure and ensure efficient and reliable operation under varying load conditions.
+Legend:
+- Open FlowValve: Sets FlowValveOutput := TRUE
+- Close FlowValve: Sets FlowValveOutput := FALSE
+- Open ReliefValve: Sets PressureReliefValve := TRUE
+- Set FlowError: Sets FlowError := TRUE
+- Set PressureError: Sets PressureError := TRUE
+- Set Error: Sets Error := TRUE, ErrorID
+- Log Event: Records event to AuditMessage
