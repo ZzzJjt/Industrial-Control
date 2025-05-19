@@ -1,3 +1,11 @@
-**Fast Fourier Transform:**
+Cause / Effect                  | Compute FFT | Set Error | Log Event | Set MagnitudeSpectrum
+--------------------------------|------------|-----------|-----------|----------------------
+Valid Input Signal              | X          |           | X         | X
+Invalid Input (NaN, >1E6)       |            | X (1)     | X         | Set to 0.0
+Numerical Instability (Overflow)|            | X (2)     | X         | Set to 0.0
 
-Develop a self-contained function block in IEC 61131-3 Structured Text to compute the Fast Fourier Transform (FFT) of a given input array. Ensure that the implementation is efficient and includes detailed comments explaining the algorithmic steps involved in computing the FFT. Discuss any limitations in terms of computational complexity and real-time performance, as well as considerations for handling input size constraints typically found in industrial control systems.
+Legend:
+- Compute FFT: Executes FFT algorithm
+- Set Error: Sets Error := TRUE, ErrorID
+- Log Event: Records event to AuditMessage
+- Set MagnitudeSpectrum: Outputs computed magnitudes or 0.0
