@@ -1,3 +1,14 @@
-**Spline Interpolation:**
+Cause / Effect                  | Compute InterpolatedY | Set Error | Log Event | Set InterpolatedY to 0.0
+--------------------------------|----------------------|-----------|-----------|-------------------------
+Valid Inputs (N ≥ 3, X monotonic)| X                    |           | X         | 
+Invalid Input (NaN, >1E6)       |                      | X (1)     | X         | X
+Insufficient Points (N < 3)     |                      | X (2)     | X         | X
+Non-Monotonic X                 |                      | X (1)     | X         | X
+Numerical Overflow              |                      | X (3)     | X         | X
+TargetX Out of Bounds           | X (clamped)          |           | X         | 
 
-Develop a self-contained function block in IEC 61131-3 Structured Text to compute spline interpolation over a set of data points. Ensure that the function block is modular and efficient, with comments explaining the steps involved in constructing and evaluating the spline. Address potential computational challenges, such as memory usage and processing time, and discuss the advantages of spline interpolation in comparison to linear methods, particularly in applications where smooth curve fitting is essential.
+Legend:
+- Compute InterpolatedY: Executes spline interpolation
+- Set Error: Sets Error := TRUE, ErrorID
+- Log Event: Records event to AuditMessage
+- Set InterpolatedY to 0.0: Sets InterpolatedY to 0.0
