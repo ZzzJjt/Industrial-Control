@@ -1,52 +1,76 @@
-**Explain Cascade Control Code:**
+VAR
+    (* Primary loop: Pressure control *)
+    PV1            : REAL;             (* Measured vessel pressure [bar] *)
+    SP1            : REAL;             (* Target pressure setpoint [bar] *)
+    e1             : REAL;             (* Pressure error *)
+    Prev_e1        : REAL := 0.0;      (* Previous pressure error *)
+    Integral1      : REAL := 0.0;      (* Integral term for pressure *)
+    Derivative1    : REAL;             (* Derivative term for pressure *)
+    OP1            : REAL;             (* Output: flow setpoint [L/min] *)
+    Kp1            : REAL;             (* Proportional gain for pressure *)
+    Ki1            : REAL;             (* Integral gain for pressure *)
+    Kd1            : REAL;             (* Derivative gain for pressure *)
 
-Explain the following code: PROGRAM CascadeControl VAR // Primary loop variables PV1: REAL; // Process variable: vessel pressure SP1: REAL; // Setpoint: target pressure OP1: REAL; // Output: secondary loop setpoint Kp1: REAL := 1.0; // Proportional gain Ki1: REAL := 0.1; // Integral gain Kd1: REAL := 0.05; // Derivative gain e1, e1_prev, e1_sum, e1_diff: REAL;
+    (* Secondary loop: Flow control *)
+    PV2            : REAL;             (* Measured flow rate [L/min] *)
+    SP2            : REAL;             (* Target flow setpoint [L/min], set by OP1 *)
+    e2             : REAL;             (* Flow error *)
+    Prev_e2        : REAL := 0.0;      (* Previous flow error *)
+    Integral2      : REAL := 0.0;      (* Integral term for flow *)
+    Derivative2    : REAL;             (* Derivative term for flow *)
+    OP2            : REAL;             (* Output: valve position [0-100%] *)
+    Kp2            : REAL;             (* Proportional gain for flow *)
+    Ki2            : REAL;             (* Integral gain for flow *)
+    Kd2            : REAL;             (* Derivative gain for flow *)
 
-// Secondary loop variables
-PV2: REAL; // Process variable: flow rate
-SP2: REAL; // Setpoint: target flow rate (OP1)
-OP2: REAL; // Output: control valve position
-Kp2: REAL := 2.0; // Proportional gain
-Ki2: REAL := 0.2; // Integral gain
-Kd2: REAL := 0.1; // Derivative gain
-e2, e2_prev, e2_sum, e2_diff: REAL;
-
-dt: TIME := t#100ms; // Sample time
-t_last: TIME;
+    (* Timing *)
+    dt             : REAL := 0.1;      (* Sample time [s] *)
+    Sample_Time    : TIME := T#100ms;  (* Sampling period *)
+    PID_Timer      : TON;              (* Timer for PID loops *)
 END_VAR
 
-METHOD RunCascadeControl // Read current pressure and flow rate values PV1 := ReadPressure(); PV2 := ReadFlowRate();
-// Primary loop: pressure control
-e1 := SP1 - PV1;
-e1_sum := e1_sum + e1 * dt;
-e1_diff := (e1 - e1_prev) / dt;
-OP1 := Kp1 * e1 + Ki1 * e1_sum + Kd1 * e1_diff;
-e1_prev := e1;
+(* Initialize timer for 100 ms sampling *)
+PID_Timer(IN := TRUE, PT := Sample_Time);
 
-// Limit OP1 to a valid range
-IF OP1 > 100.0 THEN
-    OP1 := 100.0;
-ELSIF OP1 < 0.0 THEN
-    OP1 := 0.0;
+(* Cascade PID control loop *)
+IF PID_Timer.Q THEN
+    (* Read measurements *)
+    PV1 := ReadPressure();
+    PV2 := ReadFlowRate();
+
+    (* Primary loop: Pressure control *)
+    e1 := SP1 - PV1;  (* Calculate pressure error *)
+    Integral1 := Integral1 + e1 * dt;  (* Update integral *)
+    Derivative1 := (e1 - Prev_e1) / dt;  (* Calculate derivative *)
+    OP1 := (Kp1 * e1) + (Ki1 * Integral1) + (Kd1 * Derivative1);  (* PID output *)
+    
+    (* Clamp OP1 *)
+    IF OP1 > 100.0 THEN
+        OP1 := 100.0;
+    ELSIF OP1 < 0.0 THEN
+        OP1 := 0.0;
+    END_IF;
+    Prev_e1 := e1;  (* Store error *)
+
+    (* Secondary loop: Flow control *)
+    SP2 := OP1;  (* Set flow setpoint *)
+    e2 := SP2 - PV2;  (* Calculate flow error *)
+    Integral2 := Integral2 + e2 * dt;  (* Update integral *)
+    Derivative2 := (e2 - Prev_e2) / dt;  (* Calculate derivative *)
+    OP2 := (Kp2 * e2) + (Ki2 * Integral2) + (Kd2 * Derivative2);  (* PID output *)
+    
+    (* Clamp OP2 *)
+    IF OP2 > 100.0 THEN
+        OP2 := 100.0;
+    ELSIF OP2 < 0.0 THEN
+        OP2 := 0.0;
+    END_IF;
+    Prev_e2 := e2;  (* Store error *)
+
+    (* Send output to valve *)
+    SetValvePosition(OP2);
+
+    (* Reset timer *)
+    PID_Timer(IN := FALSE);
+    PID_Timer(IN := TRUE);
 END_IF;
-
-// Secondary loop: flow control
-SP2 := OP1;
-e2 := SP2 - PV2;
-e2_sum := e2_sum + e2 * dt;
-e2_diff := (e2 - e2_prev) / dt;
-OP2 := Kp2 * e2 + Ki2 * e2_sum + Kd2 * e2_diff;
-e2_prev := e2;
-
-// Limit OP2 to a valid range
-IF OP2 > 100.0 THEN
-    OP2 := 100.0;
-ELSIF OP2 < 0.0 THEN
-    OP2 := 0.0;
-END_IF;
-
-// Set control valve position
-SetValvePosition(OP2);
-END_METHOD
-
-END_PROGRAM
