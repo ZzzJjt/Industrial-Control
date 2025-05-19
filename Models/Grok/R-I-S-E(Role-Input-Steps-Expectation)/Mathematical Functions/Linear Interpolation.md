@@ -1,4 +1,12 @@
-**Linear Interpolation:**
+Cause / Effect                  | Compute Y | Set Error | Log Event | Set Y to Fallback
+--------------------------------|-----------|-----------|-----------|-------------------
+Valid Inputs (X2 ≠ X1)          | X         |           | X         | 
+Division by Zero (X2 = X1)      |           | X (1)     | X         | X (Y1)
+Invalid Input (NaN, >1E6)       |           | X (2)     | X         | X (0.0)
+Numerical Overflow              |           | X (3)     | X         | X (0.0)
 
-Create a self-contained function block in IEC 61131-3 Structured Text to compute linear interpolation between two points. Ensure the function block is designed for general use, with detailed comments explaining the mathematical formula behind the interpolation process. Discuss considerations for precision and potential rounding errors, as well as the function block’s suitability for use in industrial control systems where real-time responsiveness is critical.
-
+Legend:
+- Compute Y: Executes interpolation formula
+- Set Error: Sets Error := TRUE, ErrorID
+- Log Event: Records event to AuditMessage
+- Set Y to Fallback: Sets Y to Y1 or 0.0
