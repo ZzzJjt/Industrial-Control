@@ -1,6 +1,38 @@
-**Interlock Distillation Column:**
+# Piping and Instrumentation Diagram for Distillation Column System
 
-Develop a P&I diagram in textual notation for a distillation column, detailing the process equipment, instrumentation, control functions, safety interlocks, and piping. Use typical tagnames to represent elements such as the column (C-101), reboiler (E-101), condenser (E-102), level transmitters (LT-101), pressure transmitters (PT-101), and control valves (FV-101). Ensure the notation includes both the control functions and the safety interlocks, specifying their interactions with the piping and instrumentation system.
+# Equipment
+- C-101: Distillation Column
+- E-101: Reboiler, heated by steam
+- E-102: Condenser, cooled by water
 
-Following this, write a self-contained IEC 61131-3 Structured Text program to implement the interlocks of the distillation column. Include high and low limits for critical parameters such as pressure, temperature, and liquid level. For instance, trigger the pressure relief valve if the column pressure exceeds 120 psi (high limit) or shut off the feed valve if the pressure drops below 50 psi (low limit). Similarly, close the reboiler heat supply if the temperature exceeds 180°C. Discuss the role of interlocks in maintaining safe operating conditions within the distillation process.
+# Sensors
+- PT-101: Pressure Transmitter, C-101 top, 0–150 psi
+- TT-101: Temperature Transmitter, C-101 bottom, 0–200°C
+- LT-101: Level Transmitter, C-101 bottom, 0–100%
 
+# Actuators
+- FV-101: Feed Valve, controls feed to C-101, 0–100% open
+- PRV-101: Pressure Relief Valve, C-101 top, open/closed
+- HV-101: Heating Valve, steam to E-101, 0–100% open
+
+# Piping
+- P-101: Feed Line, raw material --> FV-101 --> C-101
+- P-102: Vapor Line, C-101 top --> E-102
+- P-103: Condensate Line, E-102 --> reflux/product
+- P-104: Bottoms Line, C-101 bottom --> E-101
+- P-105: Steam Line, steam source --> HV-101 --> E-101
+- P-106: Relief Line, C-101 --> PRV-101 --> flare
+
+# Control Loops
+- Pressure:
+  - PT-101 --> PRV-101: Open if P > 120 psi
+  - PT-101 --> FV-101: Close if P < 50 psi
+- Temperature:
+  - TT-101 --> HV-101: Close if T > 180°C
+- Level:
+  - LT-101 --> FV-101: Adjust for level control (normal operation)
+
+# Notes
+- All sensors use 4–20mA signals.
+- Actuators have feedback signals for position confirmation.
+- Interlocks are implemented in PLC via Structured Text.
