@@ -1,8 +1,12 @@
-**Motor Interlock Function Block Diagram:**
+Cause / Effect                  | Prevent Motor Start | Trigger Alarm | Log Event
+--------------------------------|--------------------|---------------|-----------
+Equipment 1 Running             | X                  | X             | X
+Equipment 2 Running             | X                  | X             | X
+Equipment 3 Running             | X                  | X             | X
+Sensor Fault                    | X                  | X             | X
+Normal (All Equipment Stopped)  |                    |               | X
 
-Design a motor interlock as a function block diagram that prevents the motor from starting while other associated equipment is still running. The interlock should monitor the operational status of surrounding equipment and block the motor start command if any equipment is still active. Include inputs from sensors or status indicators and outputs that control the motor start circuit.
-
-Provide the implementation of the MotorInterlock function block in IEC 61131-3 Structured Text. This function block should check the statuses of relevant equipment (e.g., EquipmentRunning), and if all equipment is stopped, it should allow the motor to start by setting the output to TRUE. If any equipment is still running, the output should remain FALSE, preventing the motor from starting.
-
-Discuss the role of motor interlocks in industrial safety and how this logic prevents premature or unsafe motor operation.
-
+Legend:
+- Prevent Motor Start: Sets AllowStart := FALSE
+- Trigger Alarm: Activates operator alarm
+- Log Event: Records event to HMI/log
