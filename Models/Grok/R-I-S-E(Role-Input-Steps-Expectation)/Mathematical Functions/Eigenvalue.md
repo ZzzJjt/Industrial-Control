@@ -1,4 +1,13 @@
-**Eigenvalue:**
+Cause / Effect                  | Set AllowStart | Trigger Alarm | Log Event | Set Error | Set Converged
+--------------------------------|---------------|---------------|-----------|-----------|---------------
+Convergence Achieved            | X             |               | X         |           | X (TRUE)
+Non-Convergence (Max Iterations)|               | X             | X         | X (1)     | X (FALSE)
+Numerical Instability (Norm > 1E6)|              | X             | X         | X (2)     | X (FALSE)
+Invalid Matrix Input            |               | X             | X         | X (2)     | X (FALSE)
 
-Design a self-contained function block in IEC 61131-3 Structured Text to compute the eigenvalues of a 10x10 matrix. Ensure the function block is optimized for performance and includes detailed comments to explain the steps involved in the eigenvalue calculation. Discuss potential challenges related to numerical stability, convergence, and computational efficiency when implementing this algorithm in a PLC environment, particularly for real-time applications.
-
+Legend:
+- Set AllowStart: Sets EigenValues and Done := TRUE
+- Trigger Alarm: Activates operator alarm
+- Log Event: Records event to AuditMessage
+- Set Error: Sets Error := TRUE, ErrorID
+- Set Converged: Sets Converged := TRUE/FALSE
