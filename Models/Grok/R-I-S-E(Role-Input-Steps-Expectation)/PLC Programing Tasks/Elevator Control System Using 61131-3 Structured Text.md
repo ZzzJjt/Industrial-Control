@@ -1,3 +1,22 @@
-**Elevator Control System Using 61131-3 Structured Text:**
+Cause / Effect                  | Open Door | Close Door | Move Up | Move Down | Clear Request | Set Error | Log Event
+--------------------------------|-----------|------------|---------|-----------|---------------|-----------|-----------
+AtFloor[i] = TRUE               | X         |            |         |           | X             |           | X
+Timer1 Done, No CabinRequest    | X         |            |         |           |               |           | X
+Timer2 Done                     |           | X          |         |           |               |           | X
+Timer1 Done, CabinRequest       |           | X          |         |           |               |           | X
+DoorOpen = TRUE                 |           |            |         |           |               |           | X
+Requests Above, GoingUp         |           |            | X       |           |               |           | X
+Requests Below, GoingDown       |           |            |         | X         |               |           | X
+No Requests in Direction        |           |            |         |           |               |           | X
+No Requests                     |           |            |         |           |               |           | X
+Multiple Floors Detected        |           |            |         |           |               | X (1)     | X
+Invalid Inputs (NaN, >1E6)      |           |            |         |           |               | X (2)     | X
 
-Write a self-contained 61131-3 structured text program to control an elevator in a 5-floor building. Each floor has top and bottom limit switches to detect the elevator’s position. The elevator door should remain open for 7 seconds after reaching a floor. If no buttons inside the elevator cabin are pressed during this time, the door should reopen for an additional 10 seconds before closing. The elevator’s movement is governed by its current direction and the direction imposed by the up and down call buttons on each
+Legend:
+- Open Door: Sets DoorOpen := TRUE
+- Close Door: Sets DoorOpen := FALSE
+- Move Up: Sets MoveUp := TRUE
+- Move Down: Sets MoveDown := TRUE
+- Clear Request: Clears CabinRequest[i], UpCall[i], DownCall[i]
+- Set Error: Sets Error := TRUE, ErrorID
+- Log Event: Records event to AuditMessage
