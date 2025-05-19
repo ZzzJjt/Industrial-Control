@@ -1,85 +1,212 @@
-**Optimize Batch Code:**
+TYPE
+    BATCH_STATE : (
+        IDLE,               // Waiting for start command
+        RAW_MATERIAL_PREP,  // Preparing raw materials (e.g., ethylene, catalyst)
+        POLYMERIZATION,     // Polymerizing under high pressure/temperature
+        QUENCHING,          // Cooling the polymer
+        DRYING,             // Removing moisture
+        PELLETIZING,        // Forming pellets
+        QA,                 // Quality assurance checks
+        PACKAGING           // Packaging final product
+    );
+END_TYPE
 
-Please make suggestions on how to optimize the following code: PROGRAM PolyethyleneBatchControl VAR // States for the batch process state: INT := 0; timer: TON; stepStartTime: TIME := T#0s;
-// Process parameters
-rawMatPrepTemp: REAL := 70.0; // �C
-rawMatPrepPressure: REAL := 1.0; // bar
-polymerizationTemp: REAL := 150.0; // �C
-polymerizationPressure: REAL := 30.0; // bar
-quenchingTemp: REAL := 25.0; // �C
-quenchingPressure: REAL := 5.0; // bar
-dryingTemp: REAL := 80.0; // �C
-pelletizingTemp: REAL := 150.0; // �C
-qualityControlTemp: REAL := 25.0; // �C
-packagingStorageTemp: REAL := 20.0; // �C
+FUNCTION_BLOCK PolyethyleneBatchControl
+VAR
+    (* State and control *)
+    Current_State       : BATCH_STATE := IDLE;   // Current batch step
+    Phase_Timer         : TON;                   // Timer for step durations
+    Start_Command       : BOOL;                  // Operator start signal
+    Prev_Start_Command  : BOOL;                  // For edge detection
+    Batch_Complete      : BOOL;                  // Batch completion flag
+    Fault_Alarm         : BOOL;                  // Fault indicator
+
+    (* Process parameters *)
+    Temp_Setpoint       : REAL;                  // Temperature setpoint (°C)
+    Press_Setpoint      : REAL;                  // Pressure setpoint (bar)
+    Temp_PV             : REAL;                  // Measured temperature (°C)
+    Press_PV            : REAL;                  // Measured pressure (bar)
+
+    (* Step durations *)
+    Prep_Duration       : TIME := T#120s;       // Raw material prep: 2 min
+    Poly_Duration       : TIME := T#600s;       // Polymerization: 10 min
+    Quench_Duration     : TIME := T#180s;       // Quenching: 3 min
+    Dry_Duration        : TIME := T#300s;       // Drying: 5 min
+    Pellet_Duration     : TIME := T#240s;       // Pelletizing: 4 min
+    QA_Duration         : TIME := T#60s;        // QA: 1 min
+    Pack_Duration       : TIME := T#120s;       // Packaging: 2 min
+
+    (* Safety limits *)
+    Temp_Max            : REAL := 250.0;        // Max allowable temperature (°C)
+    Press_Max           : REAL := 1200.0;       // Max allowable pressure (bar)
 END_VAR
 
-METHOD UpdateTemperaturesAndPressures: BOOL 
-// Update temperatures and pressures for each process step CASE state OF 1: (* Raw material preparation ) SetTemperatureAndPressure(rawMatPrepTemp, rawMatPrepPressure); 
-2: ( Polymerization ) SetTemperatureAndPressure(polymerizationTemp, polymerizationPressure); 
-3: ( Quenching ) SetTemperatureAndPressure(quenchingTemp, quenchingPressure); 
-4: ( Drying ) SetTemperatureAndPressure(dryingTemp, quenchingPressure); 
-5: ( Pelletizing ) SetTemperatureAndPressure(pelletizingTemp, quenchingPressure); 
-6: ( Quality control ) SetTemperatureAndPressure(qualityControlTemp, quenchingPressure); 
-7: ( Packaging and storage *) SetTemperatureAndPressure(packagingStorageTemp, quenchingPressure); END_CASE;
-RETURN TRUE;
+(* Centralized method to update temperature and pressure setpoints *)
+METHOD PRIVATE UpdateTemperaturesAndPressures : BOOL
+VAR_INPUT
+    targetTemp : REAL;      // Desired temperature setpoint (°C)
+    targetPress : REAL;     // Desired pressure setpoint (bar)
+END_VAR
+    // Update setpoints and validate conditions
+    Temp_Setpoint := targetTemp;
+    Press_Setpoint := targetPress;
+
+    // Check safety limits
+    IF Temp_PV > Temp_Max OR Press_PV > Press_Max THEN
+        Fault_Alarm := TRUE;
+        UpdateTemperaturesAndPressures := FALSE;
+    ELSE
+        UpdateTemperaturesAndPressures := TRUE;
+    END_IF;
 END_METHOD
 
-METHOD SetTemperatureAndPressure: BOOL (temp: REAL; pressure: REAL) // Set temperature and pressure for the current process step // Dummy function for demonstration purposes RETURN TRUE; END_METHOD
-
-(* Main control loop ) LOOP CASE state OF 0: ( Start the batch process *) state := 1; stepStartTime := NOW();
-    1: (* Raw material preparation *)
-        timer(IN:=NOT timer.Q, PT:=T#5s);
-        IF timer.Q THEN
-            state := 2;
-            stepStartTime := NOW();
-            timer(IN:=FALSE);
-        END_IF;
-
-    2: (* Polymerization *)
-        timer(IN:=NOT timer.Q, PT:=T#30m);
-        IF timer.Q THEN
-            state := 3;
-            stepStartTime := NOW();
-            timer(IN:=FALSE);
-        END_IF;
-
-    3: (* Quenching *)
-        timer(IN:=NOT timer.Q, PT:=T#15m);
-        IF timer.Q THEN
-            state := 4;
-            stepStartTime := NOW();
-            timer(IN:=FALSE);
-        END_IF;
-
-    4: (* Drying *)
-        timer(IN:=NOT timer.Q, PT:=T#1h);
-        IF timer.Q THEN
-            state := 5;
-            stepStartTime := NOW();
-            timer(IN:=FALSE);
-        END_IF;
-
-    5: (* Pelletizing *)
-        timer(IN:=NOT timer.Q, PT:=T#1h30m); 
-IF timer.Q THEN 
-state := 6;
-stepStartTime := NOW(); 
-timer(IN:=FALSE); 
-END_IF;
-6: (* Quality control *) timer(IN:=NOT timer.Q, PT:=T#2h); IF timer.Q THEN state := 7; stepStartTime := NOW(); timer(IN:=FALSE); END_IF;
-7: (* Packaging and storage *)
-    timer(IN:=NOT timer.Q, PT:=T#3h);
-    IF timer.Q THEN
-        // Batch process complete
-        state := 0;
-        timer(IN:=FALSE);
+(* Step-specific logic methods *)
+METHOD PRIVATE RunRawMaterialPrep : BOOL
+    // Configure for raw material preparation
+    IF Phase_Timer.IN = FALSE THEN
+        Phase_Timer(IN := TRUE, PT := Prep_Duration);
+        UpdateTemperaturesAndPressures(targetTemp := 50.0, targetPress := 10.0);
     END_IF;
+    RunRawMaterialPrep := Phase_Timer.Q;
+END_METHOD
+
+METHOD PRIVATE RunPolymerization : BOOL
+    // Configure for polymerization
+    IF Phase_Timer.IN = FALSE THEN
+        Phase_Timer(IN := TRUE, PT := Poly_Duration);
+        UpdateTemperaturesAndPressures(targetTemp := 200.0, targetPress := 1000.0);
+    END_IF;
+    RunPolymerization := Phase_Timer.Q;
+END_METHOD
+
+METHOD PRIVATE RunQuenching : BOOL
+    // Configure for quenching
+    IF Phase_Timer.IN = FALSE THEN
+        Phase_Timer(IN := TRUE, PT := Quench_Duration);
+        UpdateTemperaturesAndPressures(targetTemp := 30.0, targetPress := 50.0);
+    END_IF;
+    RunQuenching := Phase_Timer.Q;
+END_METHOD
+
+METHOD PRIVATE RunDrying : BOOL
+    // Configure for drying
+    IF Phase_Timer.IN = FALSE THEN
+        Phase_Timer(IN := TRUE, PT := Dry_Duration);
+        UpdateTemperaturesAndPressures(targetTemp := 80.0, targetPress := 1.0);
+    END_IF;
+    RunDrying := Phase_Timer.Q;
+END_METHOD
+
+METHOD PRIVATE RunPelletizing : BOOL
+    // Configure for pelletizing
+    IF Phase_Timer.IN = FALSE THEN
+        Phase_Timer(IN := TRUE, PT := Pellet_Duration);
+        UpdateTemperaturesAndPressures(targetTemp := 150.0, targetPress := 10.0);
+    END_IF;
+    RunPelletizing := Phase_Timer.Q;
+END_METHOD
+
+METHOD PRIVATE RunQA : BOOL
+    // Configure for quality assurance
+    IF Phase_Timer.IN = FALSE THEN
+        Phase_Timer(IN := TRUE, PT := QA_Duration);
+        UpdateTemperaturesAndPressures(targetTemp := 25.0, targetPress := 1.0);
+    END_IF;
+    RunQA := Phase_Timer.Q;
+END_METHOD
+
+METHOD PRIVATE RunPackaging : BOOL
+    // Configure for packaging
+    IF Phase_Timer.IN = FALSE THEN
+        Phase_Timer(IN := TRUE, PT := Pack_Duration);
+        UpdateTemperaturesAndPressures(targetTemp := 25.0, targetPress := 1.0);
+    END_IF;
+    RunPackaging := Phase_Timer.Q;
+END_METHOD
+
+(* Main cyclic execution *)
+CASE Current_State OF
+    IDLE:
+        // Reset outputs and wait for start
+        Temp_Setpoint := 0.0;
+        Press_Setpoint := 0.0;
+        Batch_Complete := FALSE;
+        Fault_Alarm := FALSE;
+        Phase_Timer(IN := FALSE);
+
+        // Detect rising edge of Start_Command
+        IF Start_Command AND NOT Prev_Start_Command THEN
+            Current_State := RAW_MATERIAL_PREP;
+        END_IF;
+
+    RAW_MATERIAL_PREP:
+        // Run preparation step
+        IF Fault_Alarm THEN
+            Current_State := IDLE;
+        ELSIF RunRawMaterialPrep() THEN
+            Current_State := POLYMERIZATION;
+            Phase_Timer(IN := FALSE);
+        END_IF;
+
+    POLYMERIZATION:
+        // Run polymerization step
+        IF Fault_Alarm THEN
+            Current_State := IDLE;
+        ELSIF RunPolymerization() THEN
+            Current_State := QUENCHING;
+            Phase_Timer(IN := FALSE);
+        END_IF;
+
+    QUENCHING:
+        // Run quenching step
+        IF Fault_Alarm THEN
+            Current_State := IDLE;
+        ELSIF RunQuenching() THEN
+            Current_State := DRYING;
+            Phase_Timer(IN := FALSE);
+        END_IF;
+
+    DRYING:
+        // Run drying step
+        IF Fault_Alarm THEN
+            Current_State := IDLE;
+        ELSIF RunDrying() THEN
+            Current_State := PELLETIZING;
+            Phase_Timer(IN := FALSE);
+        END_IF;
+
+    PELLETIZING:
+        // Run pelletizing step
+        IF Fault_Alarm THEN
+            Current_State := IDLE;
+        ELSIF RunPelletizing() THEN
+            Current_State := QA;
+            Phase_Timer(IN := FALSE);
+        END_IF;
+
+    QA:
+        // Run quality assurance step
+        IF Fault_Alarm THEN
+            Current_State := IDLE;
+        ELSIF RunQA() THEN
+            Current_State := PACKAGING;
+            Phase_Timer(IN := FALSE);
+        END_IF;
+
+    PACKAGING:
+        // Run packaging step
+        IF Fault_Alarm THEN
+            Current_State := IDLE;
+        ELSIF RunPackaging() THEN
+            Current_State := IDLE;
+            Batch_Complete := TRUE;
+            Phase_Timer(IN := FALSE);
+        END_IF;
 END_CASE;
 
-UpdateTemperaturesAndPressures();
+(* Update edge detection *)
+Prev_Start_Command := Start_Command;
 
-END_LOOP; END_PROGRAM
-
-Consider that the program is executed cyclically in a task according to the 61131-3 programming model. Thus no explicit main loop is needed. Please fix the code by removing the 'LOOP'.
-
+(* Outputs are sent to PID controllers or actuators *)
+(* Example: Write Temp_Setpoint, Press_Setpoint to analog outputs *)
+END_FUNCTION_BLOCK
