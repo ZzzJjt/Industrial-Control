@@ -1,28 +1,20 @@
-**Entry/Exit Control for Underground Car Park Using 61131-3 Structured Text:**
+Cause / Effect                  | Set M20 | Reset M20 | Set M30 | Reset M30 | Red Lights On | Green Lights On | Set Error | Log Event
+--------------------------------|---------|-----------|---------|-----------|---------------|-----------------|-----------|-----------
+M1 Pulse (Ground Entry at X1)   | X       |           |         |           | X             |                 |           | X
+M4 Pulse (Ground Exit at X2)    | X       | X         |         |           | X             |                 |           | X
+M2 Pulse (Basement Exit at X1)  |         |           | X       | X         | X             |                 |           | X
+M3 Pulse (Basement Entry at X2) |         |           | X       |           | X             |                 |           | X
+M20 OR M30 = TRUE               |         |           |         |           | X             |                 |           | X
+M20 AND M30 = FALSE             |         |           |         |           |               | X               |           | X
+Conflicting Pulses (e.g., M1 AND M2) |    |           |         |           | X             |                 | X (1)     | X
+Sensor Fault (Extendable)       |         |           |         |           | X             |                 | X (2)     | X
 
-Write a PLC program in structured text (ST) according to IEC 61131-3 to control the entry and exit of an underground car park. The system uses the following sensors and actuators:
-
-	•	Sensors:
-	•	X1: Photoelectric switch at the ground floor entry/exit. It will be ON when a car passes.
-	•	X2: Photoelectric switch at the basement entry/exit. It will be ON when a car passes.
-	•	M1: ON for one scan cycle when a car from the ground floor passes X1.
-	•	M2: ON for one scan cycle when a car from the basement passes X1.
-	•	M3: ON for one scan cycle when a car from the basement passes X2.
-	•	M4: ON for one scan cycle when a car from the ground floor passes X2.
-	•	Intermediate Variables:
-	•	M20: ON during the process of a car entering the passage from the ground floor.
-	•	M30: ON during the process of a car entering the passage from the basement.
-	•	Output Devices:
-	•	Y1: Red lights at the entry/exit of the ground floor and the basement.
-	•	Y2: Green lights at the entry/exit of the ground floor and the basement.
-
-Process Description:
-
-The entry and exit of the underground car park is controlled by a single lane passage, with traffic lights regulating car movement. The red lights (Y1) prohibit cars from entering or leaving, while the green lights (Y2) allow movement.
-
-	•	When a car enters the passage from the ground floor entry, the red lights at both the ground floor and basement turn ON, while the green lights turn OFF, preventing any other cars from entering or leaving until the car passes through the passage.
-	•	Similarly, when a car enters from the basement, the red lights will turn ON at both entry points, prohibiting other vehicles from entering or leaving until the car passes through.
-	•	When the passage is clear, the green lights will turn ON again, allowing cars to enter or exit freely.
-	•	Initially, the PLC should set the green lights ON and the red lights OFF to indicate free movement.
-
-
+Legend:
+- Set M20: Sets M20 := TRUE
+- Reset M20: Sets M20 := FALSE
+- Set M30: Sets M30 := TRUE
+- Reset M30: Sets M30 := FALSE
+- Red Lights On: Sets Y1 := TRUE, Y2 := FALSE
+- Green Lights On: Sets Y1 := FALSE, Y2 := TRUE
+- Set Error: Sets Error := TRUE, ErrorID
+- Log Event: Records event to AuditMessage
