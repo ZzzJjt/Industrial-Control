@@ -1,4 +1,11 @@
-**Sine Function**
+Cause / Effect                  | Compute SineValue | Set Error | Log Event | Set SineValue to 0.0
+--------------------------------|------------------|-----------|-----------|----------------------
+Valid Input (Any Real Angle)    | X                |           | X         | 
+Invalid Input (NaN, >1E6)       |                  | X (1)     | X         | X
+Numerical Overflow (Taylor)     |                  | X (1)     | X         | X
 
-Develop a self-contained function block in IEC 61131-3 Structured Text to compute the sine of a given angle in radians. Ensure that the function block is modular and reusable, with appropriate comments detailing the mathematical operations involved. Include a discussion on the precision of the sine function within the context of PLC programming and its potential limitations in real-time applications.
-
+Legend:
+- Compute SineValue: Executes SIN() or Taylor series
+- Set Error: Sets Error := TRUE, ErrorID
+- Log Event: Records event to AuditMessage
+- Set SineValue to 0.0: Sets SineValue to 0.0
