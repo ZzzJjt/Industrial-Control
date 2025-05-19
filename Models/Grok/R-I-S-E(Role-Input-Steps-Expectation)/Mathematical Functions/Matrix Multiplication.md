@@ -1,4 +1,11 @@
-**Matrix Multiplication:**
+Cause / Effect                  | Compute MatrixC | Set Error | Log Event | Set MatrixC to 0.0
+--------------------------------|----------------|-----------|-----------|--------------------
+Valid Inputs                    | X              |           | X         | 
+Invalid Input (NaN, >1E6)       |                | X (1)     | X         | X
+Numerical Overflow              |                | X (2)     | X         | X
 
-Develop a self-contained function block in IEC 61131-3 to perform multiplication of two 4x4 matrices. Ensure that the implementation adheres to the standards of structured text programming and includes detailed comments explaining each part of the process. Discuss the computational complexity and potential limitations when scaling this approach to larger matrices.
-
+Legend:
+- Compute MatrixC: Executes matrix multiplication
+- Set Error: Sets Error := TRUE, ErrorID
+- Log Event: Records event to AuditMessage
+- Set MatrixC to 0.0: Clears output matrix
