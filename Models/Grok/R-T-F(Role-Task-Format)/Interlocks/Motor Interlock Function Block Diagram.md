@@ -1,8 +1,76 @@
-**Motor Interlock Function Block Diagram:**
+FUNCTION_BLOCK MotorInterlock
+(*
+    Function Block: MotorInterlock
+    Purpose: Implements safe motor start logic by checking the running status of
+             associated equipment, allowing motor startup only when all equipment
+             is shut down. Reusable for coordinated startup in industrial control systems.
+    Standard: IEC 61131-3 Structured Text
+    Date: May 20, 2025
+*)
 
-Design a motor interlock as a function block diagram that prevents the motor from starting while other associated equipment is still running. The interlock should monitor the operational status of surrounding equipment and block the motor start command if any equipment is still active. Include inputs from sensors or status indicators and outputs that control the motor start circuit.
+(* Input Variables *)
+VAR_INPUT
+    Equipment1Running : BOOL;  (* TRUE: Equipment 1 is running *)
+    Equipment2Running : BOOL;  (* TRUE: Equipment 2 is running *)
+    Equipment3Running : BOOL;  (* TRUE: Equipment 3 is running *)
+    Execute           : BOOL;   (* TRUE: Enable interlock checks *)
+END_VAR
 
-Provide the implementation of the MotorInterlock function block in IEC 61131-3 Structured Text. This function block should check the statuses of relevant equipment (e.g., EquipmentRunning), and if all equipment is stopped, it should allow the motor to start by setting the output to TRUE. If any equipment is still running, the output should remain FALSE, preventing the motor from starting.
+(* Output Variables *)
+VAR_OUTPUT
+    AllowStart        : BOOL;   (* TRUE: Motor startup allowed *)
+    Error             : BOOL;   (* TRUE: Input validation error *)
+    ErrorDesc         : STRING[50]; (* Error description *)
+    AuditLogEntry     : STRING[80]; (* Audit log message *)
+END_VAR
 
-Discuss the role of motor interlocks in industrial safety and how this logic prevents premature or unsafe motor operation.
+(* Internal Variables *)
+VAR
+    PrevExecute       : BOOL := FALSE;  (* Previous Execute state *)
+END_VAR
 
+(* Internal Methods *)
+METHOD PRIVATE LogAuditEntry
+    VAR_INPUT
+        Message : STRING[80];
+    END_VAR
+    (* Log audit entry *)
+    AuditLogEntry := Message;
+    (* In practice, export to HMI or logger: e.g., CALL LogToHMI(AuditLogEntry); *)
+END_METHOD
+
+(* Main Execution Logic *)
+(* Reset outputs *)
+AllowStart := FALSE;
+Error := FALSE;
+ErrorDesc := '';
+AuditLogEntry := '';
+
+(* Check if enabled *)
+IF NOT Execute THEN
+    LogAuditEntry('MotorInterlock: Disabled');
+    RETURN;
+END_IF;
+
+(* Validate inputs - optional, assuming digital inputs are reliable *)
+(* In practice, add checks for sensor faults if needed *)
+
+(* Interlock logic: Allow start only if all equipment is shut down *)
+IF NOT Equipment1Running AND NOT Equipment2Running AND NOT Equipment3Running THEN
+    AllowStart := TRUE;
+    LogAuditEntry('MotorInterlock: All equipment stopped, motor start allowed');
+ELSE
+    AllowStart := FALSE;
+    IF Equipment1Running THEN
+        LogAuditEntry('MotorInterlock: Equipment 1 running, motor start blocked');
+    ELSIF Equipment2Running THEN
+        LogAuditEntry('MotorInterlock: Equipment 2 running, motor start blocked');
+    ELSIF Equipment3Running THEN
+        LogAuditEntry('MotorInterlock: Equipment 3 running, motor start blocked');
+    END_IF;
+END_IF;
+
+(* Update previous state *)
+PrevExecute := Execute;
+
+END_FUNCTION_BLOCK
