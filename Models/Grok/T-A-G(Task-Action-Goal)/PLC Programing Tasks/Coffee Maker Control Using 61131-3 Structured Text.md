@@ -1,20 +1,119 @@
-**Coffee Maker Control Using 61131-3 Structured Text:**
+(* Program: Automated Coffee Maker Control *)
+(* Version: 1.0, Date: 2025-05-21 *)
+(* Manages tank filling, mixing, and dispensing with emergency stop handling *)
+PROGRAM PRG_CoffeeMakerControl
+VAR
+    (* Inputs *)
+    Start : BOOL;                     (* Start button to initiate cycle *)
+    CoffeeMilk : BOOL;                (* Select coffee with milk *)
+    CoffeeOnly : BOOL;                (* Select coffee only *)
+    EmergencyStop : BOOL;             (* Emergency stop button *)
+    MixerLevelFull : BOOL;            (* Sensor: TRUE if mixer tank is full (130 ml) *)
+    
+    (* Outputs *)
+    CoffeeValve : BOOL;               (* Coffee valve: TRUE = Open *)
+    MilkValve : BOOL;                 (* Milk valve: TRUE = Open *)
+    OutputValve : BOOL;               (* Output valve: TRUE = Open *)
+    Mixer : BOOL;                     (* Mixer motor: TRUE = Running *)
+    
+    (* Internal Variables *)
+    State : UINT;                     (* State machine: 0=Idle, 1=Filling, 2=Mixing, 3=Dispensing *)
+    MixTimer : TON;                   (* Timer for 4-second mixing *)
+    LastStart : BOOL;                 (* For rising edge detection on Start *)
+    SafeToRun : BOOL;                 (* Internal flag: TRUE if safe to start *)
+END_VAR
 
-Write a self-contained 61131-3 structured text (ST) program to control a coffee machine that manages three tanks (coffee, milk, and mixer) and three valves (one for coffee, one for milk, and one for output). The machine should mix coffee and milk properly to create the best output, following this process:
+(* Initialize outputs and state *)
+CoffeeValve := FALSE;
+MilkValve := FALSE;
+OutputValve := FALSE;
+Mixer := FALSE;
+State := 0;                           (* Start in Idle state *)
+SafeToRun := TRUE;                    (* Initially safe to run *)
+MixTimer(IN := FALSE, PT := T#4s);    (* 4-second mixing timer *)
 
-System Description:
+(* Main logic *)
+(* Emergency stop handling: Overrides all operations *)
+IF EmergencyStop THEN
+    (* Immediately halt all operations and reset to safe state *)
+    CoffeeValve := FALSE;             (* Close coffee valve *)
+    MilkValve := FALSE;               (* Close milk valve *)
+    OutputValve := FALSE;             (* Close output valve *)
+    Mixer := FALSE;                   (* Stop mixer *)
+    MixTimer(IN := FALSE);            (* Reset timer *)
+    State := 0;                       (* Return to Idle *)
+    SafeToRun := FALSE;               (* Lock out until reset *)
+ELSE
+    (* Normal operation: State machine *)
+    CASE State OF
+        0: (* Idle *)
+            (* Wait for Start button and valid drink selection *)
+            (* Use rising edge to prevent continuous triggering *)
+            IF Start AND NOT LastStart AND SafeToRun THEN
+                IF CoffeeMilk AND NOT CoffeeOnly THEN
+                    (* Coffee with milk: Open both valves *)
+                    CoffeeValve := TRUE;
+                    MilkValve := TRUE;
+                    State := 1;           (* Move to Filling *)
+                ELSIF CoffeeOnly AND NOT CoffeeMilk THEN
+                    (* Coffee only: Open coffee valve *)
+                    CoffeeValve := TRUE;
+                    MilkValve := FALSE;
+                    State := 1;           (* Move to Filling *)
+                ELSE
+                    (* Invalid selection: Do nothing *)
+                    (* Prevents operation if both or neither selected *)
+                END_IF;
+            END_IF;
 
-	1.	Tanks and Valves:
-	•	The coffee and milk valves open to fill the mixer tank. The mixer tank can hold up to 130ml, and when it reaches the maximum level, the coffee and milk valves will close.
-	2.	Mixing Process:
-	•	Once the tank is full, the mixer starts automatically and runs for 4 seconds. After mixing is complete, the output valve opens to dispense the coffee.
-	3.	Control Buttons:
-	•	Button 1: Emergency Stop — Stops the entire system instantly in case of malfunction, such as valve failures, tank level issues, or mixer failures.
-	•	Button 2: Start — Begins the coffee-making process.
-	•	Button 3: Coffee and Milk — Prepares coffee with milk by opening both the coffee and milk valves.
-	•	Button 4: Coffee Only — Prepares coffee without milk by only opening the coffee valve.
+        1: (* Filling *)
+            (* Monitor mixer tank level *)
+            IF MixerLevelFull THEN
+                (* Tank full: Close input valves, start mixing *)
+                CoffeeValve := FALSE;      (* Close coffee valve *)
+                MilkValve := FALSE;        (* Close milk valve *)
+                Mixer := TRUE;             (* Start mixer *)
+                MixTimer(IN := TRUE);      (* Start 4-second timer *)
+                State := 2;                (* Move to Mixing *)
+            END_IF;
 
-Safety Features:
+        2: (* Mixing *)
+            (* Wait for mixing to complete *)
+            IF MixTimer.Q THEN
+                (* Mixing done: Stop mixer, open output valve *)
+                Mixer := FALSE;            (* Stop mixer *)
+                MixTimer(IN := FALSE);     (* Reset timer *)
+                OutputValve := TRUE;       (* Open output valve *)
+                State := 3;                (* Move to Dispensing *)
+            END_IF;
 
-	•	Implement the emergency stop to handle unexpected events, such as valve malfunctions, tank level detection failures, or mixer operation failures. When triggered, the system should stop immediately to ensure safety.
+        3: (* Dispensing *)
+            (* Assume dispensing completes when tank is empty *)
+            (* Simplification: No explicit empty sensor *)
+            IF NOT MixerLevelFull THEN
+                (* Tank empty: Close output valve, reset to Idle *)
+                OutputValve := FALSE;      (* Close output valve *)
+                State := 0;                (* Return to Idle *)
+            END_IF;
+    END_CASE;
+END_IF;
 
+(* Reset SafeToRun after emergency stop *)
+(* Requires Start button release and no emergency condition *)
+IF NOT EmergencyStop AND NOT Start AND NOT LastStart THEN
+    SafeToRun := TRUE;                (* Restore safe state *)
+END_IF;
+
+(* Update LastStart for rising edge detection *)
+LastStart := Start;
+
+(* Ensure safe state on power-up or PLC stop *)
+(* All outputs FALSE unless explicitly activated *)
+IF NOT SafeToRun THEN
+    CoffeeValve := FALSE;
+    MilkValve := FALSE;
+    OutputValve := FALSE;
+    Mixer := FALSE;
+END_IF;
+
+END_PROGRAM
