@@ -1,8 +1,95 @@
-**3D Pouch Making Machine:**
+PROGRAM PouchMachineControl
+VAR
+    // State machine
+    machineState : INT := 0;
 
-Design a detailed start-up and shutdown sequence for a 3D pouch making machine in IEC 61131-3 Structured Text. The machine consists of 8 heating stations, 8 cooling stations, one horizontal cutter, one vertical cutter, and two feeder units responsible for raw material feeding. Winding tension management is critical throughout the process to ensure proper tension in the raw material.
+    // Inputs
+    StartBtn : BOOL;
+    StopBtn  : BOOL;
+    TensionOK : BOOL;
+    FlowOK : BOOL;
 
-Write a structured start-up sequence that sequentially activates the heating and cooling stations, regulates the feeder units to maintain optimal tension, and ensures proper synchronization between the cutters and material flow. Additionally, create a shutdown sequence that safely deactivates each component in the correct order, ensuring proper cooling and tension release.
+    // Outputs
+    HeatersOn : BOOL := FALSE;
+    CoolersOn : BOOL := FALSE;
+    FeedersOn : BOOL := FALSE;
+    HorizontalCutterOn : BOOL := FALSE;
+    VerticalCutterOn : BOOL := FALSE;
 
-Ensure the program includes typical parameter values, timers, and conditions for each stage of the start-up and shutdown procedures, and discuss the importance of winding tension in maintaining machine efficiency and product quality.
+    // Timers
+    tPreheat : TON;
+    tCool : TON;
+    tCutterDelay : TON;
 
+    // Internal flags
+    preheatDone : BOOL := FALSE;
+    coolDone : BOOL := FALSE;
+    cutterReady : BOOL := FALSE;
+
+END_VAR
+
+// Main logic
+tPreheat(IN := machineState = 1, PT := T#60s);
+tCool(IN := machineState = 6, PT := T#30s);
+tCutterDelay(IN := machineState = 4, PT := T#5s);
+
+CASE machineState OF
+    0: // Idle
+        IF StartBtn THEN
+            machineState := 1;
+        ELSIF StopBtn THEN
+            // Already idle
+            machineState := 0;
+        END_IF;
+
+    1: // Preheating
+        HeatersOn := TRUE;
+        IF tPreheat.Q THEN
+            preheatDone := TRUE;
+            machineState := 2;
+        END_IF;
+
+    2: // Start Coolers
+        CoolersOn := TRUE;
+        machineState := 3;
+
+    3: // Start Feeders (tension check)
+        IF TensionOK THEN
+            FeedersOn := TRUE;
+            machineState := 4;
+        END_IF;
+
+    4: // Wait for FlowOK and tension before cutters
+        IF TensionOK AND FlowOK THEN
+            tCutterDelay(IN := TRUE);
+            IF tCutterDelay.Q THEN
+                cutterReady := TRUE;
+                machineState := 5;
+            END_IF;
+        ELSE
+            tCutterDelay(IN := FALSE);
+        END_IF;
+
+    5: // Start Cutters
+        IF cutterReady THEN
+            HorizontalCutterOn := TRUE;
+            VerticalCutterOn := TRUE;
+        END_IF;
+
+        IF StopBtn THEN
+            machineState := 6; // Shutdown
+        END_IF;
+
+    6: // Shutdown Sequence
+        HorizontalCutterOn := FALSE;
+        VerticalCutterOn := FALSE;
+        FeedersOn := FALSE;
+
+        tCool(IN := TRUE);
+        IF tCool.Q THEN
+            CoolersOn := FALSE;
+            HeatersOn := FALSE;
+            machineState := 0;
+        END_IF;
+
+END_CASE;
