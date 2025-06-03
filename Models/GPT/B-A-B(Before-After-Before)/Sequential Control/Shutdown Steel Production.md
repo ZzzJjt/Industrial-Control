@@ -1,12 +1,44 @@
-**Shutdown Steel Production:**
+VAR
+    shutdownPhase      : INT := 4;
 
-Develop a comprehensive list of steps for the controlled shutdown of a steel production facility. Include key stages such as reducing furnace temperature, controlling gas flow rates, and maintaining safe oxygen levels throughout the shutdown process.
+    tempCurrent        : REAL;       // °C
+    gasFlowCurrent     : REAL;       // m³/h
+    oxygenFlowCurrent  : REAL;       // m³/h
 
-Provide a detailed control narrative for steps 4 to 6 of the shutdown sequence, specifying concrete ranges and setpoints for variables such as temperature, gas flow, and oxygen levels.
+    tempSetpoint       : REAL := 200.0;
+    gasFlowInitial     : REAL := 3000.0;  // example start
+    shutdownStartTime  : TIME;
+    timeNow            : TIME;
 
-Write a self-contained IEC 61131-3 Structured Text program based on this control narrative, ensuring proper sequencing and safety protocols.
+    gasRampFB          : GasRampDown;
+    oxyControlFB       : OxygenBalancer;
 
-Additionally, create a function in IEC 61131-3 to gradually reduce the fuel gas flow rate to the furnace burners over a period of 12 hours. This function should incorporate timing and safety checks to ensure smooth transitions.
+    phaseTimer         : TON;
+    shutdownComplete   : BOOL := FALSE;
+END_VAR
 
-Lastly, write an IEC 61131-3 function for adjusting the oxygen supply to the burners to maintain a precise fuel-to-air ratio of 1:2.5 during the shutdown. Ensure the function is adaptable to fluctuations in gas flow and temperature, and include safeguards for maintaining combustion efficiency.
+FUNCTION_BLOCK GasRampDown
+VAR_INPUT
+    gasStart      : REAL;
+    duration      : TIME;
+    t0            : TIME;
+    tNow          : TIME;
+END_VAR
+VAR_OUTPUT
+    gasSetpoint   : REAL;
+    done          : BOOL;
+END_VAR
+VAR
+    elapsed       : TIME;
+    rate          : REAL;
+END_VAR
+
+elapsed := tNow - t0;
+IF elapsed >= duration THEN
+    gasSetpoint := 0.0;
+    done := TRUE;
+ELSE
+    rate := gasStart / REAL_TO_TIME(duration);
+    gasSetpoint := gasStart - rate * REAL_TO_TIME(elapsed);
+END_IF;
 
