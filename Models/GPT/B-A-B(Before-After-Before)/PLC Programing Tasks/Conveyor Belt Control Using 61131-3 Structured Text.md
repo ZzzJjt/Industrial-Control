@@ -1,6 +1,46 @@
-**Conveyor Belt Control Using 61131-3 Structured Text:**
+// === Input Variables ===
+VAR
+    Sensor1, Sensor2, Sensor3, Sensor4, Sensor5 : BOOL; // Object detection sensors
+    StationStop1, StationStop2, StationStop3   : BOOL; // Manual station stop buttons
+    ManualMode, AutoMode                       : BOOL; // Mode selection switches
+END_VAR
 
-Write a self-contained 61131-3 structured text program (not a function block) to control a conveyor belt system with three stations, where each station allows a user to stop the conveyor. The system should automatically start and stop based on input from five sensors that detect the presence of objects on the conveyor. The conveyor belt speed must be maintained at 2 meters per second. The program should manage both manual and automatic control modes while ensuring safe and efficient operation.
+// === Output Variables ===
+VAR
+    ConveyorRunning : BOOL := FALSE; // Conveyor motor control signal
+    ConveyorSpeed   : REAL := 2.0;   // Fixed speed in m/s
+    ModeStatus      : STRING[20];    // For monitoring
+END_VAR
 
-Implement logic that prioritizes safety by ensuring the conveyor stops if any station triggers a stop command or if an object is not detected by the sensors.
+// === Control Logic ===
 
+// Manual Stop always takes highest priority
+IF StationStop1 OR StationStop2 OR StationStop3 THEN
+    ConveyorRunning := FALSE;
+    ModeStatus := 'STOPPED BY STATION';
+
+ELSIF AutoMode AND NOT ManualMode THEN
+    // Auto mode only runs when all 5 sensors detect items
+    IF Sensor1 AND Sensor2 AND Sensor3 AND Sensor4 AND Sensor5 THEN
+        ConveyorRunning := TRUE;
+        ModeStatus := 'RUNNING: AUTO MODE';
+    ELSE
+        ConveyorRunning := FALSE;
+        ModeStatus := 'WAITING: MISSING ITEM';
+    END_IF;
+
+ELSIF ManualMode AND NOT AutoMode THEN
+    // In Manual mode, run as long as no manual stop is active
+    IF NOT (StationStop1 OR StationStop2 OR StationStop3) THEN
+        ConveyorRunning := TRUE;
+        ModeStatus := 'RUNNING: MANUAL MODE';
+    ELSE
+        ConveyorRunning := FALSE;
+        ModeStatus := 'MANUAL STOP TRIGGERED';
+    END_IF;
+
+ELSE
+    // Fallback: no valid mode selected
+    ConveyorRunning := FALSE;
+    ModeStatus := 'MODE ERROR OR IDLE';
+END_IF;
