@@ -1,6 +1,56 @@
-**Batch Adhesive:**
+PROGRAM AdhesiveReactionControl
+VAR
+    // State machine variable
+    reactionState : INT := 0;
 
-Develop an ISA-88 batch control recipe for the production of adhesive, detailing the stages involved in the process. Create a self-contained program in IEC 61131-3 Structured Text to manage the sequential control of step B.2, Reaction, with specific process parameters and timers. Include the necessary control logic to call methods corresponding to each phase of the reaction, ensuring that transitions between steps are managed through appropriate conditions and timer values.
+    // Process parameters (could be loaded from recipe management system)
+    targetTemp : REAL := 85.0; // °C
+    reactionTime : TIME := T#30m;
 
-Incorporate detailed content for calling the methods that govern specific operations, such as heating, mixing, and maintaining the reaction environment. Additionally, discuss the integration of ISA-88 standards in batch process control, focusing on how the structured text program facilitates modularity and flexibility in controlling the adhesive production process.
+    // Inputs
+    currentTemp : REAL;
+    tempSensorOK : BOOL;
 
+    // Outputs
+    HeaterOn : BOOL := FALSE;
+    MixerOn  : BOOL := FALSE;
+    ReactionComplete : BOOL := FALSE;
+
+    // Timer
+    tReaction : TON;
+
+END_VAR
+
+// Main control logic
+CASE reactionState OF
+
+    0: // Idle / Waiting to start
+        IF tempSensorOK THEN
+            reactionState := 1;
+        END_IF;
+
+    1: // Start heating
+        HeaterOn := TRUE;
+        IF currentTemp >= targetTemp THEN
+            HeaterOn := FALSE;
+            reactionState := 2;
+        END_IF;
+
+    2: // Start mixing
+        MixerOn := TRUE;
+        tReaction(IN := TRUE, PT := reactionTime);
+        reactionState := 3;
+
+    3: // Hold reaction
+        IF tReaction.Q THEN
+            reactionState := 4;
+        END_IF;
+
+    4: // End reaction
+        MixerOn := FALSE;
+        ReactionComplete := TRUE;
+        reactionState := 5;
+
+    5: // Final state – maintain end condition
+        // Optionally wait for external reset or next batch trigger
+END_CASE;
