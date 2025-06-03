@@ -1,6 +1,22 @@
-**Extended Cause & Process Action Matrix:**
-
-Develop an extended cause and process action matrix for the interlocks in a chemical reactor. Each row should represent a specific cause (e.g., sensor values exceeding limits), and the column headings should represent safety actions performed using actuators in the system. The matrix should illustrate how different causes trigger specific actions to ensure safe operation.
-
-Discuss how this extended matrix provides a clear mapping between potential hazardous situations and the corresponding safety actions. Emphasize the importance of designing interlocks that ensure safe and stable reactor operation, preventing risks such as overpressure, underheating, and process failures.
-
+\begin{table}[htbp]
+\centering
+\caption{Extended Cause and Process Action Interlock Matrix for Chemical Reactor}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.5cm}|c|c|c|c|c|c|c|c|}
+\hline
+\textbf{Cause Description} & \textbf{A1} \\small{Close Feed} & \textbf{A2} \\small{Vent Reactor} & \textbf{A3} \\small{Start Cooling} & \textbf{A4} \\small{Stop Agitator} & \textbf{A5} \\small{Close Outlet} & \textbf{A6} \\small{Lock Setpoints} & \textbf{A7} \\small{Alarm} & \textbf{A8} \\small{ESD} \\
+\hline
+C1: Pressure High             & ✔️ & ✔️ &     & ✔️ & ✔️ & ✔️ & ✔️ &     \\
+C2: Pressure Low              & ✔️ &     &     &     & ✔️ & ✔️ & ✔️ &     \\
+C3: Temperature High          & ✔️ &     & ✔️ & ✔️ &     & ✔️ & ✔️ &     \\
+C4: Temperature Low           &     &     &     &     &     &     & ✔️ &     \\
+C5: Level Sensor Fault        & ✔️ &     &     &     &     &     & ✔️ &     \\
+C6: Cooling Flow Low          & ✔️ &     & ✔️ & ✔️ & ✔️ & ✔️ & ✔️ &     \\
+C7: Feed Valve Stuck Open     & ✔️ &     &     &     &     & ✔️ & ✔️ &     \\
+C8: Agitator Motor Fault      & ✔️ &     & ✔️ &     & ✔️ & ✔️ & ✔️ &     \\
+C9: Emergency Stop Activated  & ✔️ & ✔️ & ✔️ & ✔️ & ✔️ & ✔️ & ✔️ & ✔️ \\
+C10: PLC Heartbeat Lost       & ✔️ & ✔️ & ✔️ & ✔️ & ✔️ & ✔️ & ✔️ & ✔️ \\
+\hline
+\end{tabular}
+\label{tab:interlock-matrix}
+\end{table}
