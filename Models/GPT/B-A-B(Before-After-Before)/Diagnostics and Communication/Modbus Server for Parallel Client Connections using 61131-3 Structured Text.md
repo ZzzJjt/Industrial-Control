@@ -1,16 +1,36 @@
-**Modbus Server for Parallel Client Connections using 61131-3 Structured Text:**
+FUNCTION_BLOCK MODBUS_TCP_SERVER
+VAR_INPUT
+    ENABLE         : BOOL;
+    LISTEN_PORT    : INT := 502;   // Modbus TCP default port
+END_VAR
 
-Develop a self-contained 61131-3 structured text function block to implement a Modbus server capable of handling up to 10 parallel client connection requests over Modbus TCP. The server should manage Modbus requests within data ranges that map input and holding registers. The following Modbus function codes must be supported:
+VAR_OUTPUT
+    CLIENT_COUNT   : INT;
+    ERROR          : BOOL;
+    STATUS         : STRING[100];
+END_VAR
 
-	•	0x01: Read Coils
-	•	0x02: Read Discrete Inputs
-	•	0x03: Read Holding Registers
-	•	0x04: Read Input Registers
-	•	0x05: Write Single Coil
-	•	0x06: Write Single Register
-	•	0x0F: Write Multiple Coils
-	•	0x10: Write Multiple Registers
-	•	0x17: Read/Write Multiple Registers
+VAR
+    // Shared memory (coils, holding/input registers)
+    COILS          : ARRAY[0..1023] OF BOOL;
+    HOLD_REGS      : ARRAY[0..511] OF WORD;
+    INPUT_REGS     : ARRAY[0..511] OF WORD;
 
-In addition, describe the ReadCoils method, explaining how it processes client requests, maps coil data, and manages communication over TCP/IP.
+    // Client connections
+    CLIENT_CONNECTED : ARRAY[1..10] OF BOOL;
+    CLIENT_REQ       : ARRAY[1..10] OF BYTE;     // Raw Modbus request frame
+    CLIENT_RES       : ARRAY[1..10] OF BYTE;     // Raw Modbus response frame
+    CLIENT_BUSY      : ARRAY[1..10] OF BOOL;
+    CLIENT_TIMEOUT   : ARRAY[1..10] OF TIME;
+    i                : INT;
 
+    // Temporary decode variables
+    FCODE            : BYTE;
+    ADDR             : WORD;
+    LEN              : WORD;
+    DATA             : ARRAY[0..250] OF BYTE;
+
+    // Internal flags
+    CurrentClient    : INT;
+    FrameLen         : INT;
+END_VAR
