@@ -1,4 +1,20 @@
-**FBD PID:**
-
-Create a 61131-3 function block diagram in ASCII art. It shall contain an analog input, a timer block, and a PID block as well as an analog output. The analog input feeds both the timer and the PID block. Only the PID block is connected to the analog output. Provide typical input and output signals for each function block and show them inside each block.
-
+         +-----------------+                  
+         |   Analog Input  |                  
+         |   IN: RawSignal |                  
+         |  OUT: AI_Value  |                  
+         +--------+--------+                  
+                  |                           
+                  |                           
+         +--------v--------+     +---------------------+     
+         |      TON        |     |        PID          |     
+         | IN : AI_Value   |     | PV : AI_Value       |     
+         | PT : T#5s       |     | SP : SetPoint       |     
+         | Q  : TimerDone  |     | CV : PID_Output     |     
+         | ET : Elapsed    |     +----------+----------+     
+         +-----------------+                |                
+                                           |                
+                                           |                
+                                 +---------v----------+     
+                                 |   Analog Output     |     
+                                 | IN : PID_Output     |     
+                                 +---------------------+     
