@@ -1,7 +1,48 @@
-**Interlock Gas Wellhead:**
+FUNCTION_BLOCK FB_SubseaWellhead_Interlocks
+VAR_INPUT
+    PT_101       : REAL;     // Pressure transmitter (psi)
+    TT_101       : REAL;     // Temperature transmitter (°C)
+    FT_101       : REAL;     // Flow transmitter (SCFM or similar)
+    MIN_FLOW     : REAL;     // Minimum allowed flow rate
+    ResetManual  : BOOL;     // Manual reset command
+END_VAR
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement emergency interlocks for a subsea gas wellhead. The program should monitor critical parameters such as wellhead pressure, temperature, and flow rates using pressure transmitters (PT), temperature transmitters (TT), and flow meters (FT). The interlock system should immediately trigger emergency shutdown procedures if any of these parameters exceed predefined safety limits.
+VAR_OUTPUT
+    MV_101       : BOOL;     // Master valve status (TRUE=open, FALSE=closed)
+    SHUTDOWN     : BOOL;     // Emergency shutdown flag
+    AlarmHighP   : BOOL;     // High pressure alarm
+    AlarmHighT   : BOOL;     // High temperature alarm
+    AlarmLowF    : BOOL;     // Low flow alarm
+END_VAR
 
-The program should include logic for closing the master valve (MV-101) if wellhead pressure exceeds 1500 psi, or if flow rate drops below the minimum threshold, indicating a potential leak. Additionally, integrate temperature monitoring to shut down the system if the temperature exceeds 120°C. Incorporate safety features such as automatic reset prevention, ensuring that manual intervention is required to restart the system after an emergency shutdown.
+VAR
+    ShutdownLatched : BOOL := FALSE;
+END_VAR
 
-Discuss the critical role of emergency interlocks in subsea gas wellhead operations, particularly in preventing catastrophic failures due to pressure, temperature, or flow anomalies.
+// --- Interlock Logic ---
+
+AlarmHighP := PT_101 > 1500.0;
+AlarmHighT := TT_101 > 120.0;
+AlarmLowF  := FT_101 < MIN_FLOW;
+
+// --- Trigger Emergency Shutdown ---
+
+IF AlarmHighP OR AlarmHighT OR AlarmLowF THEN
+    ShutdownLatched := TRUE;
+END_IF
+
+// --- Maintain Shutdown Until Manual Reset ---
+
+IF ShutdownLatched THEN
+    SHUTDOWN := TRUE;
+    MV_101 := FALSE; // Close master valve
+ELSE
+    SHUTDOWN := FALSE;
+    MV_101 := TRUE;  // Open only when no faults
+END_IF
+
+// --- Manual Reset Logic ---
+
+IF ResetManual AND NOT (AlarmHighP OR AlarmHighT OR AlarmLowF) THEN
+    ShutdownLatched := FALSE;
+END_IF
