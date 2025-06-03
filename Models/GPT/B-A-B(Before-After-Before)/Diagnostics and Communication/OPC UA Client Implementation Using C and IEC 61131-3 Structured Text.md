@@ -35,3 +35,31 @@ unsigned int opcua_connect(const char* serverUrl, unsigned int timeoutMs) {
     UA_Client_delete(client);
     return OPCUA_SUCCESS;
 }
+
+
+FUNCTION_BLOCK OPCUA_Connect_FB
+VAR_INPUT
+    Execute     : BOOL;
+    ServerUrl   : STRING(255);
+    Timeout     : TIME;
+END_VAR
+VAR_OUTPUT
+    Done        : BOOL;
+    Busy        : BOOL;
+    Error       : BOOL;
+    ErrorID     : DWORD;
+END_VAR
+VAR
+    InternalBusy   : BOOL := FALSE;
+    StartTime      : TIME;
+    TimeoutMs      : DWORD;
+    RisingEdge     : BOOL := FALSE;
+END_VAR
+
+// External declaration
+{extern}
+FUNCTION opcua_connect_c : DWORD
+VAR_INPUT
+    serverurl : STRING(255);
+    timeoutMs : DWORD;
+END_VAR
