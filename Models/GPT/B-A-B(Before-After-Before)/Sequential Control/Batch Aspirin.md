@@ -1,6 +1,85 @@
-**Batch Aspirin:**
+PROGRAM AspirinBatchControl
+VAR
+    // State management
+    state : INT := 0;
 
-Develop an ISA-88 batch control recipe for the production of aspirin (acetylsalicylic acid), outlining the process stages and the physical structure, which includes a reactor, crystallizer, centrifuge, and dryer. The process involves the following educts: acetic anhydride, salicylic acid, and sulfuric acid as a catalyst, with products being acetylsalicylic acid and acetic acid. The drying stage should occur at 90°C.
+    // Parameters
+    tempReaction : REAL := 75.0;         // °C
+    timeReaction : TIME := T#30m;
+    tempCrystallize : REAL := 10.0;      // °C
+    timeCrystallize : TIME := T#45m;
+    tempDrying : REAL := 90.0;           // °C
+    timeDrying : TIME := T#1h;
 
-Write a self-contained program in IEC 61131-3 Structured Text for the sequential control of the reaction stage, incorporating typical parameter values for temperature, pressure, and timing. Ensure that the program logic follows the batch control principles of ISA-88, with clear transitions between operations like heating, mixing, and reaction completion. Additionally, include control parameters for initiating and managing the crystallization and drying phases, ensuring that temperature and time controls are accurate.
+    // Inputs
+    currentTemp : REAL;
+    reactorReady : BOOL;
+    dryerReady : BOOL;
 
+    // Outputs
+    heaterOn : BOOL := FALSE;
+    stirrerOn : BOOL := FALSE;
+    dryerOn : BOOL := FALSE;
+    batchComplete : BOOL := FALSE;
+
+    // Timer
+    tHold : TON;
+
+END_VAR
+
+// Main process control
+CASE state OF
+
+    0: // Idle - wait for reactor to be ready
+        IF reactorReady THEN
+            state := 1;
+        END_IF;
+
+    1: // Heat to reaction temperature
+        heaterOn := TRUE;
+        IF currentTemp >= tempReaction THEN
+            heaterOn := FALSE;
+            stirrerOn := TRUE;
+            tHold(IN := TRUE, PT := timeReaction);
+            state := 2;
+        END_IF;
+
+    2: // Hold at reaction conditions
+        IF tHold.Q THEN
+            stirrerOn := FALSE;
+            tHold(IN := FALSE);
+            state := 3;
+        END_IF;
+
+    3: // Cool to crystallization temp
+        IF currentTemp <= tempCrystallize THEN
+            tHold(IN := TRUE, PT := timeCrystallize);
+            state := 4;
+        END_IF;
+
+    4: // Hold crystallization
+        IF tHold.Q THEN
+            tHold(IN := FALSE);
+            IF dryerReady THEN
+                dryerOn := TRUE;
+                state := 5;
+            END_IF;
+        END_IF;
+
+    5: // Heat for drying
+        IF currentTemp >= tempDrying THEN
+            tHold(IN := TRUE, PT := timeDrying);
+            state := 6;
+        END_IF;
+
+    6: // Hold drying
+        IF tHold.Q THEN
+            dryerOn := FALSE;
+            tHold(IN := FALSE);
+            batchComplete := TRUE;
+            state := 7;
+        END_IF;
+
+    7: // Complete - wait for reset or batch report
+        // Maintain completion status
+END_CASE;
