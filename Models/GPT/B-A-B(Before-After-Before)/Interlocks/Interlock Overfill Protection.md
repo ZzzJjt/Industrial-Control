@@ -1,5 +1,44 @@
-**Interlock Overfill Protection:**
+FUNCTION_BLOCK FB_OverfillProtection
+VAR_INPUT
+    LevelSensor     : REAL;     // Level sensor reading (e.g., % or cm)
+    HIGH_SETPOINT   : REAL;     // High-level trip threshold
+    RESET_THRESHOLD : REAL;     // Reset threshold (to prevent chattering)
+    SensorFault     : BOOL;     // Level sensor fault flag
+    ValveFault      : BOOL;     // Inlet valve fault flag
+END_VAR
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement an interlock system for overfill protection of a vessel. The program should utilize a level sensor to monitor the liquid level in the vessel and control an inlet valve to prevent overfilling.
+VAR_OUTPUT
+    INLET_VALVE     : BOOL;     // Inlet valve control (TRUE = open, FALSE = closed)
+    SHUTDOWN_LATCH  : BOOL;     // Indicates whether overfill shutdown is latched
+    AlarmHighLevel  : BOOL;     // Alarm for high-level condition
+    AlarmSensorFail : BOOL;     // Alarm for sensor failure
+    AlarmValveFail  : BOOL;     // Alarm for valve fault
+END_VAR
 
-The logic should ensure that the inlet valve automatically closes when the level sensor detects that the liquid has reached a predefined high-level setpoint. The interlock should remain engaged until the level drops below a safe threshold. Additionally, include a fail-safe mechanism to handle sensor failure or valve malfunction, ensuring the system defaults to a safe state. Discuss the importance of interlocks in industrial process safety and the role of overfill protection in preventing hazardous conditions.
+VAR
+    ValveClosedDueToFault : BOOL := FALSE;
+END_VAR
+
+// --- Alarm conditions ---
+AlarmHighLevel  := LevelSensor >= HIGH_SETPOINT;
+AlarmSensorFail := SensorFault;
+AlarmValveFail  := ValveFault;
+
+// --- Latching logic for overfill shutdown ---
+IF LevelSensor >= HIGH_SETPOINT THEN
+    SHUTDOWN_LATCH := TRUE;
+END_IF;
+
+IF SHUTDOWN_LATCH AND (LevelSensor < RESET_THRESHOLD) THEN
+    SHUTDOWN_LATCH := FALSE;
+END_IF;
+
+// --- Fail-safe logic in case of sensor or valve fault ---
+ValveClosedDueToFault := SensorFault OR ValveFault;
+
+// --- Final control decision for inlet valve ---
+IF SHUTDOWN_LATCH OR ValveClosedDueToFault THEN
+    INLET_VALVE := FALSE; // Close inlet valve
+ELSE
+    INLET_VALVE := TRUE;  // Allow normal operation
+END_IF;
