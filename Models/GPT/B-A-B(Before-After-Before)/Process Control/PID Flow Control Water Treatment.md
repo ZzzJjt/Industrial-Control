@@ -1,5 +1,47 @@
-**PID Flow Control Water Treatment:**
+VAR
+    // === Process Inputs ===
+    FlowRate : REAL;           // Water flow in L/min
+    Dosing_PV : REAL;          // Measured chlorine concentration in ppm
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement PID feedback control for chemical dosing in a water treatment process. The program should regulate the dosing rate of chlorine at 3 ppm, adjusting based on real-time flow measurements with a sampling rate of 100 ms.
+    // === Setpoint ===
+    Dosing_SP : REAL := 3.0;   // Target chlorine level (ppm)
 
-The control logic should include PID parameters (proportional, integral, and derivative gains) that are tuned for maintaining the desired dosing concentration. Ensure the program accounts for any deviations from the setpoint and adjusts the chemical dosing accordingly, while including safety limits to prevent overdosing or underdosing. Discuss the importance of precise flow control in water treatment, with a focus on maintaining safe and effective chemical levels.
+    // === PID Parameters ===
+    Kp : REAL := 2.0;
+    Ki : REAL := 0.5;
+    Kd : REAL := 0.1;
+
+    // === Internal PID State ===
+    Error : REAL;
+    Prev_Error : REAL := 0.0;
+    Integral : REAL := 0.0;
+    Derivative : REAL;
+
+    // === Output ===
+    Dosing_Output : REAL;
+
+    // === Safety Limits ===
+    Min_Dose : REAL := 0.0;
+    Max_Dose : REAL := 10.0;
+
+    // === Timing ===
+    SampleTime : REAL := 0.1; // 100 ms
+END_VAR
+
+// === PID Calculation ===
+Error := Dosing_SP - Dosing_PV;
+Integral := Integral + Error * SampleTime;
+Derivative := (Error - Prev_Error) / SampleTime;
+
+Dosing_Output := (Kp * Error) + (Ki * Integral) + (Kd * Derivative);
+
+// === Safety Clamping ===
+IF Dosing_Output > Max_Dose THEN
+    Dosing_Output := Max_Dose;
+ELSIF Dosing_Output < Min_Dose THEN
+    Dosing_Output := Min_Dose;
+END_IF;
+
+Prev_Error := Error;
+
+// === Dosing_Output now controls the chemical dosing pump ===
