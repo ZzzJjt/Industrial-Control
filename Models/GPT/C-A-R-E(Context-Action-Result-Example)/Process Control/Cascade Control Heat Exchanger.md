@@ -1,5 +1,31 @@
-**Cascade Control Heat Exchanger:**
+PROGRAM HeatExchangerCascadeControl
+VAR
+    // === Outer Loop: Temperature Controller ===
+    Temp_SP      : REAL := 85.0;      // Temperature Setpoint [°C]
+    Temp_PV      : REAL;              // Process Variable: Actual Temperature [°C]
+    Temp_Error   : REAL;              // Error = SP - PV
+    Temp_Output  : REAL;              // Output: Flow Setpoint from Temp Controller
 
-Develop a self-contained IEC 61131-3 Structured Text program (not a function block) to implement cascade control for regulating the temperature in a heat exchanger. The outer loop should control the temperature setpoint based on the process requirements, while the inner loop controls the flow rate of the heating medium to adjust the temperature dynamically.
+    // === Inner Loop: Flow Controller ===
+    Flow_SP      : REAL;              // Setpoint from Outer Loop [e.g., L/min]
+    Flow_PV      : REAL;              // Process Variable: Measured Flow [L/min]
+    Flow_Error   : REAL;              // Error = SP - PV
+    Flow_Output  : REAL;              // Output to Flow Control Valve
 
-The program should manage the interaction between the primary and secondary control loops, ensuring that the inner loop responds quickly to disturbances, while the outer loop provides overall temperature stability. Include typical parameter values for temperature control and flow adjustments, and discuss the advantages of using cascade control in heat exchanger systems, particularly in improving response times and maintaining stable temperature control under varying load conditions.
+    // === Controller Gains ===
+    Kp_Outer     : REAL := 1.0;       // Proportional Gain for Temp Loop
+    Kp_Inner     : REAL := 2.0;       // Proportional Gain for Flow Loop
+
+    // === Final Actuator Signal ===
+    ValveCommand : REAL;              // Signal to actuate the control valve
+END_VAR
+
+// === Outer Loop Control ===
+Temp_Error := Temp_SP - Temp_PV;              // Temperature error
+Temp_Output := Kp_Outer * Temp_Error;         // Proportional output
+Flow_SP := Temp_Output;                       // Flow setpoint for inner loop
+
+// === Inner Loop Control ===
+Flow_Error := Flow_SP - Flow_PV;              // Flow error
+Flow_Output := Kp_Inner * Flow_Error;         // Proportional output
+ValveCommand := Flow_Output;                  // Command to valve actuator
