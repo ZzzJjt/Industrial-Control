@@ -1,61 +1,53 @@
-**Generate Documentation Urea Reaction:**
+PROGRAM UreaReactionControl
+VAR
+    // --- Inputs ---
+    stAmmoniaValve       : BOOL;     // Status of ammonia valve (sensor)
+    stCO2Valve           : BOOL;     // Status of CO₂ valve (sensor)
+    rCurrentPressure     : REAL;     // Reactor pressure in bar
+    rCurrentTemperature  : REAL;     // Reactor temperature in °C
+    CURRENT_TIME         : TIME;     // System time (external RTC)
 
-Generate a developer documentation for the following code: PROGRAM UreaReactionControl VAR // Inputs stAmmoniaValve : BOOL; // TRUE when ammonia valve is open stCO2Valve : BOOL; // TRUE when CO2 valve is open rCurrentPressure : REAL; rCurrentTemperature : REAL;
-// Outputs
-stAmmoniaValveControl : BOOL; // TRUE to open ammonia valve
-stCO2ValveControl : BOOL; // TRUE to open CO2 valve
+    // --- Outputs ---
+    stAmmoniaValveControl : BOOL;    // Command to open/close ammonia valve
+    stCO2ValveControl     : BOOL;    // Command to open/close CO₂ valve
+    stReactionFinished    : BOOL;    // Process completion flag
 
-// Internal variables
-stStep1 : BOOL := FALSE; // Load raw materials
-stStep2 : BOOL := FALSE; // Control reaction
-stReactionFinished : BOOL := FALSE; // Reaction finished flag
+    // --- Parameters ---
+    rTargetPressure       : REAL := 175.0;
+    rPressureTolerance    : REAL := 5.0;
+    rTargetTemperature    : REAL := 185.0;
+    rTemperatureTolerance : REAL := 2.0;
+    tReactionDuration     : TIME := T#30m;
 
-// Parameters
-rTargetPressure : REAL := 175.0; // Target reactor pressure in bars
-rPressureTolerance : REAL := 5.0; // Pressure tolerance in bars
-rTargetTemperature : REAL := 185.0; // Target reactor temperature in �C
-rTemperatureTolerance : REAL := 2.0; // Temperature tolerance in �C
-tReactionTime : TIME := T#30m; // Total reaction time
-tReactionTimer : TIME; // Reaction timer
+    // --- Internals ---
+    tReactionStart        : TIME;
+    bTimerStarted         : BOOL := FALSE;
+    bConditionsOK         : BOOL := FALSE;
+    tElapsed              : TIME;
 END_VAR
-// Main sequence control
-IF NOT stReactionFinished THEN
 
-    // Step 1: Load raw materials
-    IF NOT stStep1 THEN
-        stAmmoniaValveControl := TRUE;  // Control ammonia valve
-        stCO2ValveControl := TRUE;      // Control CO2 valve
-        
-        // Check valve status
-        IF stAmmoniaValve AND stCO2Valve THEN
-            stStep1 := TRUE;             // Step 1 complete
-            tReactionTimer := CURRENT_TIME;  // Record current time to start reaction timing
-        END_IF
+// Step 1: Material Intake
+IF NOT bTimerStarted THEN
+    stAmmoniaValveControl := TRUE;
+    stCO2ValveControl := TRUE;
 
-    // Step 2: Control reaction
-    ELSIF NOT stStep2 THEN
-        // Check if current pressure and temperature are within the target range
-        IF (rCurrentPressure >= rTargetPressure - rPressureTolerance) AND (rCurrentPressure <= rTargetPressure + rPressureTolerance) AND 
-           (rCurrentTemperature >= rTargetTemperature - rTemperatureTolerance) AND (rCurrentTemperature <= rTargetTemperature + rTemperatureTolerance) THEN
-           
-            // Check if the reaction time has been reached
-            IF CURRENT_TIME >= tReactionTimer + tReactionTime THEN
-                stStep2 := TRUE;  // Step 2 complete
-            END_IF
-        
-        ELSE
-            // Adjust valves based on pressure and temperature
-            stAmmoniaValveControl := (rCurrentPressure < rTargetPressure) OR (rCurrentTemperature < rTargetTemperature);
-            stCO2ValveControl := (rCurrentPressure < rTargetPressure) OR (rCurrentTemperature < rTargetTemperature);
-        END_IF
+    IF stAmmoniaValve AND stCO2Valve THEN
+        tReactionStart := CURRENT_TIME;
+        bTimerStarted := TRUE;
     END_IF
-
-ELSE
-    // Close all valves, mark reaction as finished
-    stAmmoniaValveControl := FALSE;
-    stCO2ValveControl := FALSE;
-    stReactionFinished := TRUE;
 END_IF
 
-END_PROGRAM
+// Step 2: Monitor Conditions
+IF bTimerStarted AND NOT stReactionFinished THEN
+    bConditionsOK := 
+        ABS(rCurrentPressure - rTargetPressure) <= rPressureTolerance AND
+        ABS(rCurrentTemperature - rTargetTemperature) <= rTemperatureTolerance;
 
+    tElapsed := CURRENT_TIME - tReactionStart;
+
+    IF bConditionsOK AND tElapsed >= tReactionDuration THEN
+        stAmmoniaValveControl := FALSE;
+        stCO2ValveControl := FALSE;
+        stReactionFinished := TRUE;
+    END_IF
+END_IF
