@@ -1,8 +1,69 @@
-**3D Pouch Making Machine:**
+VAR
+    MachineState        : INT := 0; // 0=IDLE, 1=STARTUP, 2=RUNNING, 3=SHUTDOWN
+    HeaterReady         : BOOL := FALSE;
+    CoolerReady         : BOOL := FALSE;
+    FeederReady         : BOOL := FALSE;
+    CutterReady         : BOOL := FALSE;
 
-Design a detailed start-up and shutdown sequence for a 3D pouch making machine in IEC 61131-3 Structured Text. The machine consists of 8 heating stations, 8 cooling stations, one horizontal cutter, one vertical cutter, and two feeder units responsible for raw material feeding. Winding tension management is critical throughout the process to ensure proper tension in the raw material.
+    HeaterTemp          : ARRAY[1..8] OF REAL;
+    CoolerTemp          : ARRAY[1..8] OF REAL;
+    rTension            : REAL;
+    rTensionSetpoint    : REAL := 50.0;
 
-Write a structured start-up sequence that sequentially activates the heating and cooling stations, regulates the feeder units to maintain optimal tension, and ensures proper synchronization between the cutters and material flow. Additionally, create a shutdown sequence that safely deactivates each component in the correct order, ensuring proper cooling and tension release.
+    HeatersOn           : ARRAY[1..8] OF BOOL;
+    CoolersOn           : ARRAY[1..8] OF BOOL;
+    FeedersOn           : ARRAY[1..2] OF BOOL;
+    CuttersOn           : STRUCT
+                            Horizontal : BOOL;
+                            Vertical   : BOOL;
+                         END_STRUCT;
 
-Ensure the program includes typical parameter values, timers, and conditions for each stage of the start-up and shutdown procedures, and discuss the importance of winding tension in maintaining machine efficiency and product quality.
+    TimerCoolDown       : TON;
+    tCoolTime           : TIME := T#5m;
+END_VAR
 
+IF MachineState = 1 THEN // STARTUP
+    // Step 1: Enable all heaters
+    FOR i := 1 TO 8 DO
+        HeatersOn[i] := TRUE;
+    END_FOR
+
+    // Check heater temps
+    HeaterReady := TRUE;
+    FOR i := 1 TO 8 DO
+        IF HeaterTemp[i] < 180.0 THEN
+            HeaterReady := FALSE;
+        END_IF
+    END_FOR
+
+    // Step 2: Enable coolers after heaters ready
+    IF HeaterReady THEN
+        FOR i := 1 TO 8 DO
+            CoolersOn[i] := TRUE;
+        END_FOR
+        CoolerReady := TRUE; // Could include cooling temp checks if needed
+    END_IF
+
+    // Step 3: Activate feeder units when heating & cooling are ready
+    IF HeaterReady AND CoolerReady THEN
+        FOR i := 1 TO 2 DO
+            FeedersOn[i] := TRUE;
+        END_FOR
+        // Tension check
+        IF rTension >= rTensionSetpoint THEN
+            FeederReady := TRUE;
+        END_IF
+    END_IF
+
+    // Step 4: Activate cutters after tension stabilizes
+    IF FeederReady THEN
+        CuttersOn.Horizontal := TRUE;
+        CuttersOn.Vertical := TRUE;
+        CutterReady := TRUE;
+    END_IF
+
+    // Final transition to RUNNING
+    IF CutterReady THEN
+        MachineState := 2; // RUNNING
+    END_IF
+END_IF
