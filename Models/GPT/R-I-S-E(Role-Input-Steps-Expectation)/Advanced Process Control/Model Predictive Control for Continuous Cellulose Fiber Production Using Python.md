@@ -1,7 +1,76 @@
-**Model Predictive Control for Continuous Cellulose Fiber Production Using Python:**
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import minimize
 
-Explain how model predictive control (MPC) can optimize cellulose fiber production from wood, where continuous infeed and outfeed operations are required, while the material undergoes a two-stage batch process. The material is supplied at an average rate of 50 tons per hour, undergoing pre-treatment in a reactor followed by homogenization before entering a 1,000 cubic meter buffer tank. The product is extracted from the tank on demand, not at a constant rate. To minimize downtime in downstream processes, a high fill level in the tank must be maintained, despite the two-hour delay caused by upstream batch processes, making PID control unsuitable.
+# Parameters
+T_total = 48      # total time horizon in hours
+dt = 1            # time step (hour)
+N = int(T_total / dt)  # simulation steps
+delay = 2         # 2-hour delay
+capacity = 1000   # tank volume in m^3
+inflow_rate = 50  # tons/hour (constant feed input)
+conversion = 1.0  # tons -> m^3 for simplification
 
-Develop Python code to simulate the system dynamics, including the dead time and fluctuating demand.
+# Demand profile (fluctuating)
+np.random.seed(42)
+demand = 40 + 10 * np.sin(np.linspace(0, 3*np.pi, N)) + np.random.randn(N)
 
-Implement Python code for a model predictive control (MPC) algorithm to optimize material flow, taking into account the time delay, fluctuating demand, and operational constraints.
+# Initialize state variables
+tank_level = np.zeros(N+1)
+feed_queue = np.zeros(N + delay + 1)  # inflow is delayed
+buffer = []
+
+# Control bounds
+u_min, u_max = 0, 60  # feed rate constraints
+
+def simulate_step(level, queue, demand_t, u):
+    queue = np.roll(queue, -1)
+    queue[-1] = u
+    inflow = queue[0] * conversion
+    new_level = max(0, min(capacity, level + inflow - demand_t))
+    return new_level, queue
+
+def mpc_controller(current_level, queue, demand_forecast, horizon=6):
+    def cost(u_seq):
+        level = current_level
+        q = queue.copy()
+        total_penalty = 0
+        for i in range(horizon):
+            u = np.clip(u_seq[i], u_min, u_max)
+            level, q = simulate_step(level, q, demand_forecast[i], u)
+            penalty = (capacity - level)**2  # penalize low tank levels
+            total_penalty += penalty
+        return total_penalty
+
+    u0 = np.ones(horizon) * inflow_rate
+    bounds = [(u_min, u_max)] * horizon
+    result = minimize(cost, u0, bounds=bounds)
+    return result.x[0]
+
+    for t in range(N):
+    horizon = min(6, N - t)
+    forecast = demand[t:t+horizon]
+    u = mpc_controller(tank_level[t], feed_queue, forecast, horizon)
+    tank_level[t+1], feed_queue = simulate_step(tank_level[t], feed_queue, demand[t], u)
+    buffer.append(u)
+
+# Plot results
+plt.figure(figsize=(12, 5))
+plt.subplot(1, 2, 1)
+plt.plot(tank_level[:-1], label='Tank Level')
+plt.axhline(capacity, color='gray', linestyle='--')
+plt.title("Tank Level")
+plt.xlabel("Hour")
+plt.ylabel("m³")
+plt.grid()
+
+plt.subplot(1, 2, 2)
+plt.plot(demand, label='Demand')
+plt.plot(buffer, label='Feed Rate (MPC)')
+plt.title("Demand vs MPC Feed Rate")
+plt.xlabel("Hour")
+plt.ylabel("tons/hr")
+plt.legend()
+plt.grid()
+plt.tight_layout()
+plt.show()
