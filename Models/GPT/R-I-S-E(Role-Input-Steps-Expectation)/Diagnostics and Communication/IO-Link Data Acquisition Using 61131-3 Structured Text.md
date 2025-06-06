@@ -1,4 +1,21 @@
-**IO-Link Data Acquisition Using 61131-3 Structured Text:**
+FUNCTION_BLOCK FB_IOL_Read5Values
+VAR_INPUT
+    StartRead      : BOOL;     // Trigger to start read operation
+    IO_LinkAddr    : ARRAY[1..5] OF INT; // Logical channel IDs or address indexes
+END_VAR
 
-Develop a function block in structured text (ST) based on IEC 61131 standards to read five values from a remote IO-Link master. The function block should handle communication with the IO-Link master, retrieve the required process data, and provide the status of each read operation. Discuss the methodology used for error checking, status reporting, and handling of potential communication issues between the IO-Link master and the connected devices.
+VAR_OUTPUT
+    Value          : ARRAY[1..5] OF REAL;   // Read values from IO-Link master
+    Status         : ARRAY[1..5] OF INT;    // 0=OK, 1=Timeout, 2=CRC Error, 3=Comm Fault
+    Busy           : BOOL;                  // TRUE when reading is in progress
+    Done           : BOOL;                  // TRUE when all reads are completed
+    ErrorGlobal    : BOOL;                  // TRUE if any read has failed
+END_VAR
 
+VAR
+    i              : INT := 1;              // Loop index
+    ReadStep       : INT := 0;              // State machine step
+    RetryCounter   : ARRAY[1..5] OF INT;    // Retry counter for each value
+    MaxRetries     : INT := 2;              // Max number of retries
+    InternalTrigger: BOOL;                 // Internal trigger to control read sequence
+END_VAR
