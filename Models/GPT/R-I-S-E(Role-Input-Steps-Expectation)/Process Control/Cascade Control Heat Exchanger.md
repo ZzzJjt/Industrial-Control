@@ -1,5 +1,31 @@
-**Cascade Control Heat Exchanger:**
+FUNCTION_BLOCK FB_CascadeHeatExchanger
+VAR_INPUT
+    Temp_SP      : REAL := 85.0;   // Desired outlet temperature [°C]
+    Temp_PV      : REAL;           // Measured outlet temperature [°C]
+    Flow_PV      : REAL;           // Measured flow rate [e.g., L/min]
+END_VAR
 
-Develop a self-contained IEC 61131-3 Structured Text program (not a function block) to implement cascade control for regulating the temperature in a heat exchanger. The outer loop should control the temperature setpoint based on the process requirements, while the inner loop controls the flow rate of the heating medium to adjust the temperature dynamically.
+VAR_OUTPUT
+    Flow_Output  : REAL;           // Output signal to the flow control valve
+    Flow_SP      : REAL;           // Flow setpoint from outer loop
+END_VAR
 
-The program should manage the interaction between the primary and secondary control loops, ensuring that the inner loop responds quickly to disturbances, while the outer loop provides overall temperature stability. Include typical parameter values for temperature control and flow adjustments, and discuss the advantages of using cascade control in heat exchanger systems, particularly in improving response times and maintaining stable temperature control under varying load conditions.
+VAR
+    // Errors
+    Temp_Error   : REAL;
+    Flow_Error   : REAL;
+
+    // Control gains
+    Kp_Outer     : REAL := 1.0;    // Gain for temperature controller (outer loop)
+    Kp_Inner     : REAL := 2.0;    // Gain for flow controller (inner loop)
+END_VAR
+
+// 1. Outer Loop: Temperature Control
+// Compute temperature error and determine desired flow setpoint
+Temp_Error := Temp_SP - Temp_PV;
+Flow_SP := Kp_Outer * Temp_Error; // Feedforward signal to inner loop
+
+// 2. Inner Loop: Flow Control
+// Compute flow error and determine valve output
+Flow_Error := Flow_SP - Flow_PV;
+Flow_Output := Kp_Inner * Flow_Error; // Final output to flow valve actuator
