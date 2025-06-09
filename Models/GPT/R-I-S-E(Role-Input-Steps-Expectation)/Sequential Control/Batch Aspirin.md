@@ -1,6 +1,56 @@
-**Batch Aspirin:**
+VAR
+    // Global Recipe Parameters
+    Temp_Setpoint : REAL := 80.0;          // Reaction temp °C
+    Drying_Temp   : REAL := 90.0;          // °C
+    Reaction_Hold : TIME := T#30m;
+    Drying_Time   : TIME := T#45m;
 
-Develop an ISA-88 batch control recipe for the production of aspirin (acetylsalicylic acid), outlining the process stages and the physical structure, which includes a reactor, crystallizer, centrifuge, and dryer. The process involves the following educts: acetic anhydride, salicylic acid, and sulfuric acid as a catalyst, with products being acetylsalicylic acid and acetic acid. The drying stage should occur at 90°C.
+    // Sensors and Actuators
+    Temp_Reactor : REAL;
+    Temp_Dryer : REAL;
+    Heater_Reactor : BOOL := FALSE;
+    Heater_Dryer : BOOL := FALSE;
+    Mixer_Reactor : BOOL := FALSE;
+    Valve_CentrifugeOut : BOOL := FALSE;
 
-Write a self-contained program in IEC 61131-3 Structured Text for the sequential control of the reaction stage, incorporating typical parameter values for temperature, pressure, and timing. Ensure that the program logic follows the batch control principles of ISA-88, with clear transitions between operations like heating, mixing, and reaction completion. Additionally, include control parameters for initiating and managing the crystallization and drying phases, ensuring that temperature and time controls are accurate.
+    // Phase Control
+    BatchStep : INT := 0; // 0=Idle, 1=Reaction, 2=Crystallization, etc.
+    ReactionTimer : TON;
+    DryingTimer : TON;
 
+    // Flags
+    Reaction_Started : BOOL := FALSE;
+    Reaction_Done : BOOL := FALSE;
+    Drying_Started : BOOL := FALSE;
+    Batch_Complete : BOOL := FALSE;
+END_VAR
+
+// === REACTION PHASE ===
+IF BatchStep = 1 THEN
+    // Start heating reactor
+    Heater_Reactor := TRUE;
+    IF Temp_Reactor >= Temp_Setpoint THEN
+        // Start mixing & hold reaction
+        Mixer_Reactor := TRUE;
+
+        IF NOT Reaction_Started THEN
+            ReactionTimer(IN := TRUE, PT := Reaction_Hold);
+            Reaction_Started := TRUE;
+        END_IF;
+
+        IF ReactionTimer.Q THEN
+            Heater_Reactor := FALSE;
+            Mixer_Reactor := FALSE;
+            Reaction_Done := TRUE;
+            BatchStep := 2; // Proceed to crystallization
+        END_IF;
+    END_IF;
+END_IF
+
+// === CRYSTALLIZATION PHASE ===
+IF BatchStep = 2 THEN
+    // Assume passive cooling and monitoring; logic can be extended
+    IF Temp_Reactor < 30.0 THEN // Wait until cool enough to crystallize
+        BatchStep := 3;
+    END_IF;
+END_IF
