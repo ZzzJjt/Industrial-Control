@@ -1,8 +1,96 @@
-**3D Pouch Making Machine:**
+VAR
+    // Machine states
+    MachineState : INT := 0; // 0=Idle, 1=StartUp, 2=Running, 3=ShuttingDown
 
-Design a detailed start-up and shutdown sequence for a 3D pouch making machine in IEC 61131-3 Structured Text. The machine consists of 8 heating stations, 8 cooling stations, one horizontal cutter, one vertical cutter, and two feeder units responsible for raw material feeding. Winding tension management is critical throughout the process to ensure proper tension in the raw material.
+    // Heating & cooling status
+    Heater_Temp : ARRAY[1..8] OF REAL;
+    Heater_Ready : BOOL;
+    Heater_Setpoint : REAL := 180.0; // °C
+    Cooling_Ready : BOOL;
 
-Write a structured start-up sequence that sequentially activates the heating and cooling stations, regulates the feeder units to maintain optimal tension, and ensures proper synchronization between the cutters and material flow. Additionally, create a shutdown sequence that safely deactivates each component in the correct order, ensuring proper cooling and tension release.
+    // Timers
+    T_HeatReady : TON;
+    T_CoolWait : TON;
+    Tension_RampDown_Timer : TON;
 
-Ensure the program includes typical parameter values, timers, and conditions for each stage of the start-up and shutdown procedures, and discuss the importance of winding tension in maintaining machine efficiency and product quality.
+    // Cutters and feeders
+    HorizontalCutter_On : BOOL := FALSE;
+    VerticalCutter_On : BOOL := FALSE;
+    FeederA_Speed : REAL := 0.0;
+    FeederB_Speed : REAL := 0.0;
 
+    // Tension control
+    Tension_Target : REAL := 50.0;
+    Tension_Current : REAL;
+    Tension_OK : BOOL;
+
+    // Internal flags
+    All_Heaters_Ready : BOOL;
+    Shutdown_Complete : BOOL := FALSE;
+END_VAR
+
+// ------------------------
+// Start-Up Sequence Logic
+// ------------------------
+IF MachineState = 1 THEN // Start-up
+
+    // 1. Activate all heating and cooling stations
+    FOR i := 1 TO 8 DO
+        Heater_Temp[i] := Heater_Temp[i] + 1.0; // simulate temp rising
+    END_FOR;
+
+    // 2. Wait for all heaters to reach the setpoint
+    All_Heaters_Ready := TRUE;
+    FOR i := 1 TO 8 DO
+        IF Heater_Temp[i] < Heater_Setpoint THEN
+            All_Heaters_Ready := FALSE;
+        END_IF;
+    END_FOR;
+
+    T_HeatReady(IN := All_Heaters_Ready, PT := T#10s); // delay for thermal stability
+    Heater_Ready := T_HeatReady.Q;
+
+    // 3. When heaters are ready, enable feeders and regulate tension
+    IF Heater_Ready THEN
+        FeederA_Speed := 50.0;
+        FeederB_Speed := 50.0;
+        Tension_Current := Tension_Target;
+        Tension_OK := TRUE;
+    END_IF;
+
+    // 4. Enable cutters when feeders and tension are stabilized
+    IF Tension_OK THEN
+        HorizontalCutter_On := TRUE;
+        VerticalCutter_On := TRUE;
+        MachineState := 2; // Transition to RUNNING
+    END_IF;
+END_IF
+
+// ------------------------
+// Shutdown Sequence Logic
+// ------------------------
+IF MachineState = 3 THEN // Shutdown
+
+    // 1. Stop cutters and feeders
+    HorizontalCutter_On := FALSE;
+    VerticalCutter_On := FALSE;
+    FeederA_Speed := 0.0;
+    FeederB_Speed := 0.0;
+
+    // 2. Gradually release tension
+    Tension_RampDown_Timer(IN := TRUE, PT := T#5s);
+    IF Tension_RampDown_Timer.Q THEN
+        Tension_Current := 0.0;
+    ELSE
+        Tension_Current := Tension_Target * (1.0 - (Tension_RampDown_Timer.ET / Tension_RampDown_Timer.PT));
+    END_IF;
+
+    // 3. Wait for cooling to stabilize before shutdown
+    T_CoolWait(IN := TRUE, PT := T#15s);
+    Cooling_Ready := T_CoolWait.Q;
+
+    IF Cooling_Ready AND (Tension_Current <= 0.1) THEN
+        Shutdown_Complete := TRUE;
+        MachineState := 0; // Return to Idle
+    END_IF;
+END_IF
