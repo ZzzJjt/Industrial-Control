@@ -1,6 +1,32 @@
-**Empty Bottle Removal for Packaging Line Using 61131-3 Structured Text:**
+FUNCTION_BLOCK EmptyBottleEjector
+VAR_INPUT
+    BottlePresentSensor : BOOL;         // Detects presence of any bottle
+    EmptyBottleSensor   : BOOL;         // Detects if the bottle is empty
+END_VAR
 
-Write a self-contained 61131-3 structured text (ST) program to automate the removal of empty bottles in a packaging line. After bottles are filled, they are transported by a conveyor toward the packaging station. The system includes two proximity sensors: one detects the presence of any bottle, and the second detects only empty bottles. When an empty bottle is detected, a pneumatic cylinder is activated to remove the empty bottle from the conveyor before it reaches the packaging area.
+VAR_OUTPUT
+    ConveyorMotor       : BOOL := TRUE; // Conveyor runs continuously
+    EjectCylinder       : BOOL := FALSE;// Pneumatic ejection cylinder
+END_VAR
 
-Ensure that the program controls the conveyor and cylinder operations efficiently, preventing any empty bottles from continuing to the packaging process, while maintaining smooth operation for filled bottles.
+VAR
+    EjectTimer          : TON;          // Timer instance for 500 ms pulse
+END_VAR
 
+// === Continuous Conveyor Operation ===
+ConveyorMotor := TRUE;
+
+// === Ejection Trigger Logic ===
+IF BottlePresentSensor AND EmptyBottleSensor THEN
+    EjectTimer(IN := TRUE, PT := T#500ms);
+    EjectCylinder := TRUE;
+ELSE
+    EjectTimer(IN := FALSE);
+    // Retract cylinder only when the timer is done (500 ms elapsed)
+    IF NOT EjectTimer.Q THEN
+        EjectCylinder := FALSE;
+    END_IF;
+END_IF;
+
+// === Execute Timer ===
+EjectTimer();
