@@ -1,6 +1,56 @@
-**Batch Urea Fertilizer:**
+VAR
+    Phase : INT := 0; // 0 = Idle, 1 = StartHeating, 2 = HoldPressure, 3 = StartCooling
+    Temp  : REAL;     // Reactor temperature (°C)
+    Temp_SP : REAL := 180.0;
+    Temp_Cool_SP : REAL := 80.0;
 
-Create an ISA-88 batch control recipe for the production of urea fertilizer, detailing the key stages of the process. Write a self-contained IEC 61131-3 Structured Text program to manage the sequential control of the reaction stage, using typical parameter values for temperature, pressure, and timing. Focus on providing the control logic for heating, cooling, and pressure regulation within the reactor, ensuring that the transitions between each operation are based on concrete conditions and timers.
+    Pressure : REAL;   // Reactor pressure (bar)
+    Pressure_SP : REAL := 140.0;
 
-Incorporate specific code snippets to manage the heating and cooling phases, as well as regulating the pressure, while explaining the use of structured text for modular control in industrial processes. Additionally, discuss the challenges of optimizing these control sequences for efficient production and compliance with ISA-88 standards.
+    Timer : TON;
+    TimerStarted : BOOL := FALSE;
 
+    Heater : BOOL;
+    Cooler : BOOL;
+    PressureControl : BOOL;
+
+    PhaseDone : BOOL := FALSE;
+    ReactionDone : BOOL := FALSE;
+END_VAR
+
+CASE Phase OF
+
+// 1. Start Heating Phase
+1:
+    Heater := TRUE;
+    Cooler := FALSE;
+    IF Temp >= Temp_SP THEN
+        Heater := FALSE;
+        Phase := 2;
+    END_IF
+
+// 2. Hold Pressure Phase (30 minutes)
+2:
+    PressureControl := TRUE;
+    IF NOT TimerStarted THEN
+        Timer(IN := TRUE, PT := T#30m);
+        TimerStarted := TRUE;
+    END_IF
+
+    IF Timer.Q AND (Pressure >= Pressure_SP - 2.0) THEN
+        Timer(IN := FALSE);
+        TimerStarted := FALSE;
+        PressureControl := FALSE;
+        Phase := 3;
+    END_IF
+
+// 3. Start Cooling Phase
+3:
+    Cooler := TRUE;
+    IF Temp <= Temp_Cool_SP THEN
+        Cooler := FALSE;
+        Phase := 0;
+        ReactionDone := TRUE;
+    END_IF
+
+END_CASE
