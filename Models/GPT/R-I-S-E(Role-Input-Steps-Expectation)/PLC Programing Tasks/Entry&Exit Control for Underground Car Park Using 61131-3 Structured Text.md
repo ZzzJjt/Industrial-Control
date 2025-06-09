@@ -1,28 +1,48 @@
-**Entry/Exit Control for Underground Car Park Using 61131-3 Structured Text:**
+FUNCTION_BLOCK ParkingPassageControl
+VAR_INPUT
+    X1 : BOOL; // Photoelectric sensor at ground floor
+    X2 : BOOL; // Photoelectric sensor at basement
+    M1 : BOOL; // Car enters from ground floor via X1
+    M2 : BOOL; // Car enters from basement via X1
+    M3 : BOOL; // Car enters from basement via X2
+    M4 : BOOL; // Car enters from ground floor via X2
+END_VAR
 
-Write a PLC program in structured text (ST) according to IEC 61131-3 to control the entry and exit of an underground car park. The system uses the following sensors and actuators:
+VAR_OUTPUT
+    Y1 : BOOL := FALSE; // Red light (stop)
+    Y2 : BOOL := TRUE;  // Green light (go)
+END_VAR
 
-	•	Sensors:
-	•	X1: Photoelectric switch at the ground floor entry/exit. It will be ON when a car passes.
-	•	X2: Photoelectric switch at the basement entry/exit. It will be ON when a car passes.
-	•	M1: ON for one scan cycle when a car from the ground floor passes X1.
-	•	M2: ON for one scan cycle when a car from the basement passes X1.
-	•	M3: ON for one scan cycle when a car from the basement passes X2.
-	•	M4: ON for one scan cycle when a car from the ground floor passes X2.
-	•	Intermediate Variables:
-	•	M20: ON during the process of a car entering the passage from the ground floor.
-	•	M30: ON during the process of a car entering the passage from the basement.
-	•	Output Devices:
-	•	Y1: Red lights at the entry/exit of the ground floor and the basement.
-	•	Y2: Green lights at the entry/exit of the ground floor and the basement.
+VAR
+    M20 : BOOL := FALSE; // Passage occupied from ground floor
+    M30 : BOOL := FALSE; // Passage occupied from basement
+END_VAR
 
-Process Description:
+// === Detect passage entry ===
+IF M1 OR M4 THEN
+    M20 := TRUE; // Car entering from ground floor
+END_IF;
 
-The entry and exit of the underground car park is controlled by a single lane passage, with traffic lights regulating car movement. The red lights (Y1) prohibit cars from entering or leaving, while the green lights (Y2) allow movement.
+IF M2 OR M3 THEN
+    M30 := TRUE; // Car entering from basement
+END_IF;
 
-	•	When a car enters the passage from the ground floor entry, the red lights at both the ground floor and basement turn ON, while the green lights turn OFF, preventing any other cars from entering or leaving until the car passes through the passage.
-	•	Similarly, when a car enters from the basement, the red lights will turn ON at both entry points, prohibiting other vehicles from entering or leaving until the car passes through.
-	•	When the passage is clear, the green lights will turn ON again, allowing cars to enter or exit freely.
-	•	Initially, the PLC should set the green lights ON and the red lights OFF to indicate free movement.
+// === Detect passage exit ===
+IF M3 OR M4 THEN
+    M20 := FALSE; // Ground-origin car has exited
+END_IF;
 
+IF M1 OR M2 THEN
+    M30 := FALSE; // Basement-origin car has exited
+END_IF;
 
+// === Traffic light control ===
+IF M20 OR M30 THEN
+    // Passage is occupied
+    Y1 := TRUE;  // Red ON
+    Y2 := FALSE; // Green OFF
+ELSE
+    // Passage is free
+    Y1 := FALSE; // Red OFF
+    Y2 := TRUE;  // Green ON
+END_IF;
