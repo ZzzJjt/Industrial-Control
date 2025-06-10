@@ -1,5 +1,34 @@
-**Interlock Overfill Protection:**
+(* === Variable Declarations === *)
+VAR
+    LevelSensor      : REAL;   (* Vessel liquid level in % *)
+    HighLevelSetpoint: REAL := 90.0;    (* Overfill threshold (%) *)
+    ResetThreshold   : REAL := 80.0;    (* Level must drop below this to reset *)
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement an interlock system for overfill protection of a vessel. The program should utilize a level sensor to monitor the liquid level in the vessel and control an inlet valve to prevent overfilling.
+    INLET_VALVE      : BOOL;   (* Output: TRUE = Valve Open, FALSE = Closed *)
 
-The logic should ensure that the inlet valve automatically closes when the level sensor detects that the liquid has reached a predefined high-level setpoint. The interlock should remain engaged until the level drops below a safe threshold. Additionally, include a fail-safe mechanism to handle sensor failure or valve malfunction, ensuring the system defaults to a safe state. Discuss the importance of interlocks in industrial process safety and the role of overfill protection in preventing hazardous conditions.
+    SensorFault      : BOOL;   (* TRUE if sensor is faulty or reading invalid *)
+    ValveFault       : BOOL;   (* TRUE if valve fails to operate properly *)
+    InterlockActive  : BOOL;   (* Latches TRUE if overfill condition or fault detected *)
+    RESET            : BOOL;   (* Manual reset signal *)
+END_VAR
+
+(* === Overfill Detection and Fault Response Logic === *)
+
+(* Trigger interlock if level exceeds high setpoint or faults are detected *)
+IF (LevelSensor > HighLevelSetpoint) OR SensorFault OR ValveFault THEN
+    InterlockActive := TRUE;
+END_IF;
+
+(* Manual reset allowed only if: 
+   - level has dropped below ResetThreshold
+   - no active sensor or valve faults *)
+IF RESET AND (LevelSensor < ResetThreshold) AND NOT SensorFault AND NOT ValveFault THEN
+    InterlockActive := FALSE;
+END_IF;
+
+(* Control inlet valve: Fail-safe closed during interlock *)
+IF InterlockActive THEN
+    INLET_VALVE := FALSE;  (* CLOSE inlet valve *)
+ELSE
+    INLET_VALVE := TRUE;   (* OPEN inlet valve *)
+END_IF;
