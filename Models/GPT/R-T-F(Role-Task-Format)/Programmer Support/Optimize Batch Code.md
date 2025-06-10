@@ -1,85 +1,116 @@
-**Optimize Batch Code:**
+VAR
+    // Process state
+    state : INT := 0;
 
-Please make suggestions on how to optimize the following code: PROGRAM PolyethyleneBatchControl VAR // States for the batch process state: INT := 0; timer: TON; stepStartTime: TIME := T#0s;
-// Process parameters
-rawMatPrepTemp: REAL := 70.0; // �C
-rawMatPrepPressure: REAL := 1.0; // bar
-polymerizationTemp: REAL := 150.0; // �C
-polymerizationPressure: REAL := 30.0; // bar
-quenchingTemp: REAL := 25.0; // �C
-quenchingPressure: REAL := 5.0; // bar
-dryingTemp: REAL := 80.0; // �C
-pelletizingTemp: REAL := 150.0; // �C
-qualityControlTemp: REAL := 25.0; // �C
-packagingStorageTemp: REAL := 20.0; // �C
+    // Timer
+    stepTimer : TON;
+    timerEnable : BOOL := FALSE;
+
+    // Temperature and pressure targets for each step
+    rawMatPrepTemp     : REAL := 90.0;
+    rawMatPrepPressure : REAL := 5.0;
+
+    reactorTemp        : REAL := 160.0;
+    reactorPressure    : REAL := 15.0;
+
+    coolingTemp        : REAL := 60.0;
+    coolingPressure    : REAL := 2.0;
+
+    // Current measured values
+    currentTemp    : REAL;
+    currentPressure: REAL;
+
+    // Output controls
+    Heater         : BOOL;
+    Cooler         : BOOL;
+    PressureValve  : BOOL;
+
+    // Timer preset
+    stepDuration : TIME := T#5s;
 END_VAR
 
-METHOD UpdateTemperaturesAndPressures: BOOL 
-// Update temperatures and pressures for each process step CASE state OF 1: (* Raw material preparation ) SetTemperatureAndPressure(rawMatPrepTemp, rawMatPrepPressure); 
-2: ( Polymerization ) SetTemperatureAndPressure(polymerizationTemp, polymerizationPressure); 
-3: ( Quenching ) SetTemperatureAndPressure(quenchingTemp, quenchingPressure); 
-4: ( Drying ) SetTemperatureAndPressure(dryingTemp, quenchingPressure); 
-5: ( Pelletizing ) SetTemperatureAndPressure(pelletizingTemp, quenchingPressure); 
-6: ( Quality control ) SetTemperatureAndPressure(qualityControlTemp, quenchingPressure); 
-7: ( Packaging and storage *) SetTemperatureAndPressure(packagingStorageTemp, quenchingPressure); END_CASE;
-RETURN TRUE;
+// === Helper Methods ===
+
+METHOD UpdateTemperaturesAndPressures : VOID
+    // Control heating, cooling, and valve based on target values
+    IF currentTemp < rawMatPrepTemp THEN
+        Heater := TRUE;
+        Cooler := FALSE;
+    ELSIF currentTemp > rawMatPrepTemp THEN
+        Heater := FALSE;
+        Cooler := TRUE;
+    ELSE
+        Heater := FALSE;
+        Cooler := FALSE;
+    END_IF;
+
+    IF currentPressure < rawMatPrepPressure THEN
+        PressureValve := TRUE;
+    ELSE
+        PressureValve := FALSE;
+    END_IF;
 END_METHOD
 
-METHOD SetTemperatureAndPressure: BOOL (temp: REAL; pressure: REAL) // Set temperature and pressure for the current process step // Dummy function for demonstration purposes RETURN TRUE; END_METHOD
 
-(* Main control loop ) LOOP CASE state OF 0: ( Start the batch process *) state := 1; stepStartTime := NOW();
-    1: (* Raw material preparation *)
-        timer(IN:=NOT timer.Q, PT:=T#5s);
-        IF timer.Q THEN
-            state := 2;
-            stepStartTime := NOW();
-            timer(IN:=FALSE);
-        END_IF;
+METHOD SetTargets : VOID
+VAR_INPUT
+    targetTemp : REAL;
+    targetPress : REAL;
+END_VAR
+    rawMatPrepTemp := targetTemp;
+    rawMatPrepPressure := targetPress;
+END_METHOD
 
-    2: (* Polymerization *)
-        timer(IN:=NOT timer.Q, PT:=T#30m);
-        IF timer.Q THEN
-            state := 3;
-            stepStartTime := NOW();
-            timer(IN:=FALSE);
-        END_IF;
 
-    3: (* Quenching *)
-        timer(IN:=NOT timer.Q, PT:=T#15m);
-        IF timer.Q THEN
-            state := 4;
-            stepStartTime := NOW();
-            timer(IN:=FALSE);
-        END_IF;
+// === Timer Logic ===
+stepTimer(IN := timerEnable, PT := stepDuration);
 
-    4: (* Drying *)
-        timer(IN:=NOT timer.Q, PT:=T#1h);
-        IF timer.Q THEN
-            state := 5;
-            stepStartTime := NOW();
-            timer(IN:=FALSE);
-        END_IF;
+// === Main State Machine ===
 
-    5: (* Pelletizing *)
-        timer(IN:=NOT timer.Q, PT:=T#1h30m); 
-IF timer.Q THEN 
-state := 6;
-stepStartTime := NOW(); 
-timer(IN:=FALSE); 
-END_IF;
-6: (* Quality control *) timer(IN:=NOT timer.Q, PT:=T#2h); IF timer.Q THEN state := 7; stepStartTime := NOW(); timer(IN:=FALSE); END_IF;
-7: (* Packaging and storage *)
-    timer(IN:=NOT timer.Q, PT:=T#3h);
-    IF timer.Q THEN
-        // Batch process complete
-        state := 0;
-        timer(IN:=FALSE);
+CASE state OF
+
+0: // Initialization
+    Heater := FALSE;
+    Cooler := FALSE;
+    PressureValve := FALSE;
+    timerEnable := FALSE;
+    state := 1;
+
+1: // Raw Material Preparation
+    SetTargets(targetTemp := 90.0, targetPress := 5.0);
+    UpdateTemperaturesAndPressures();
+    timerEnable := TRUE;
+    IF stepTimer.Q THEN
+        timerEnable := FALSE;
+        state := 2;
     END_IF;
+
+2: // Reactor Polymerization
+    SetTargets(targetTemp := 160.0, targetPress := 15.0);
+    UpdateTemperaturesAndPressures();
+    timerEnable := TRUE;
+    IF stepTimer.Q THEN
+        timerEnable := FALSE;
+        state := 3;
+    END_IF;
+
+3: // Cooling
+    SetTargets(targetTemp := 60.0, targetPress := 2.0);
+    UpdateTemperaturesAndPressures();
+    timerEnable := TRUE;
+    IF stepTimer.Q THEN
+        timerEnable := FALSE;
+        state := 4;
+    END_IF;
+
+4: // End of Batch
+    Heater := FALSE;
+    Cooler := FALSE;
+    PressureValve := FALSE;
+    // Batch complete, optionally reset or go to idle
+    state := 0;
+
+ELSE
+    // Fallback state
+    state := 0;
 END_CASE;
-
-UpdateTemperaturesAndPressures();
-
-END_LOOP; END_PROGRAM
-
-Consider that the program is executed cyclically in a task according to the 61131-3 programming model. Thus no explicit main loop is needed. Please fix the code by removing the 'LOOP'.
-
