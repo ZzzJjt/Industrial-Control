@@ -1,7 +1,32 @@
-**Interlock Pressure Relief:**
+(* === Variable Declarations === *)
+VAR
+    PT_101           : REAL;      (* Vessel pressure in bar *)
+    HighPressureLimit: REAL := 15.0;   (* Relief valve trigger threshold *)
+    ResetThreshold   : REAL := 12.0;   (* Reset threshold after pressure drop *)
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement an interlock system for opening a pressure relief valve in a vessel upon detecting overpressure. The program should monitor the vessel pressure using a pressure sensor and trigger the opening of the relief valve when the pressure exceeds a predefined safe limit.
+    RELIEF_VALVE     : BOOL;      (* Output: TRUE = Valve Open, FALSE = Closed *)
 
-The logic should ensure that the pressure relief valve remains open until the vessel pressure drops below a safe threshold. Additionally, incorporate safety checks to account for sensor failures or valve malfunctions, ensuring that the system defaults to a safe state in the event of a fault. Discuss the significance of pressure relief systems in protecting industrial processes from overpressure hazards and ensuring operational safety.
+    SensorFault      : BOOL;      (* TRUE if pressure sensor is faulty *)
+    ValveFault       : BOOL;      (* TRUE if valve feedback indicates failure *)
+    InterlockActive  : BOOL;      (* Latching flag to maintain open state *)
+    RESET            : BOOL;      (* Manual reset trigger *)
+END_VAR
 
+(* === Interlock Activation Logic === *)
 
+(* Trigger interlock if pressure exceeds high limit or faults are detected *)
+IF (PT_101 > HighPressureLimit) OR SensorFault OR ValveFault THEN
+    InterlockActive := TRUE;
+END_IF;
+
+(* Allow reset only if pressure is below reset threshold AND faults cleared *)
+IF RESET AND (PT_101 < ResetThreshold) AND NOT SensorFault AND NOT ValveFault THEN
+    InterlockActive := FALSE;
+END_IF;
+
+(* Valve Control Logic — Fail-safe Open *)
+IF InterlockActive THEN
+    RELIEF_VALVE := TRUE;  (* OPEN relief valve *)
+ELSE
+    RELIEF_VALVE := FALSE; (* CLOSE relief valve *)
+END_IF;
