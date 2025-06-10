@@ -1,3 +1,43 @@
-**Automatic Car Wash Station Control Using 61131-3 Structured Text:**
+PROGRAM CarWashSafetyController
+VAR_INPUT
+    CarPresentSensor      : BOOL; // Car detected inside wash bay
+    HumanDetectedSensor   : BOOL; // Human detected in wash zone
+END_VAR
 
-Write a PLC program in structured text (ST) according to IEC 61131-3 standards to control an automatic car wash station with a single wash bay. The system should use a sensor to detect the presence of a car. Once the car is detected and no human is present in the wash area, the system should initiate the car wash process. If a human is detected within the car wash area at any point, the station should immediately stop the wash process, trigger an alarm, and remain in a safe state until the area is clear.
+VAR_OUTPUT
+    WashActive            : BOOL; // TRUE when wash is running
+    AlarmActive           : BOOL; // TRUE when human detected in danger zone
+END_VAR
+
+VAR
+    SafeToRun             : BOOL := TRUE; // Internal interlock flag
+END_VAR
+
+// Mirror sensor input to local flags (optional, for clarity)
+VAR
+    CarPresent            : BOOL;
+    HumanDetected         : BOOL;
+END_VAR
+
+// ------------------- Logic Start -------------------
+CarPresent := CarPresentSensor;
+HumanDetected := HumanDetectedSensor;
+
+// Priority 1: Emergency – human detected, force shutdown
+IF HumanDetected THEN
+    WashActive := FALSE;
+    AlarmActive := TRUE;
+    SafeToRun := FALSE; // Lock system until manual/safe clear
+// Priority 2: Safe conditions — car present, no human, safe flag set
+ELSIF CarPresent AND NOT HumanDetected AND SafeToRun THEN
+    WashActive := TRUE;
+    AlarmActive := FALSE;
+// Priority 3: No car or unsafe — stop wash
+ELSE
+    WashActive := FALSE;
+END_IF
+
+// Reset SafeToRun only when conditions are safe and no wash active
+IF NOT HumanDetected AND NOT WashActive THEN
+    SafeToRun := TRUE;
+END_IF
