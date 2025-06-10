@@ -1,5 +1,42 @@
-**PID Flow Control Water Treatment:**
+VAR
+    // Inputs
+    FlowRate        : REAL;              // Flow rate of water (optional for future use)
+    Dosing_PV       : REAL;              // Measured chlorine concentration (ppm)
+    Dosing_SP       : REAL := 3.0;       // Desired setpoint for chlorine concentration (ppm)
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement PID feedback control for chemical dosing in a water treatment process. The program should regulate the dosing rate of chlorine at 3 ppm, adjusting based on real-time flow measurements with a sampling rate of 100 ms.
+    // PID tuning parameters
+    Kp              : REAL := 2.0;       // Proportional gain
+    Ki              : REAL := 0.5;       // Integral gain
+    Kd              : REAL := 0.1;       // Derivative gain
 
-The control logic should include PID parameters (proportional, integral, and derivative gains) that are tuned for maintaining the desired dosing concentration. Ensure the program accounts for any deviations from the setpoint and adjusts the chemical dosing accordingly, while including safety limits to prevent overdosing or underdosing. Discuss the importance of precise flow control in water treatment, with a focus on maintaining safe and effective chemical levels.
+    // Internal PID variables
+    Error           : REAL;              // Current error
+    Prev_Error      : REAL := 0.0;       // Previous error (for derivative)
+    Integral        : REAL := 0.0;       // Accumulated integral
+    Derivative      : REAL;              // Derivative term
+    Dosing_Output   : REAL;              // Output command for dosing (ppm)
+
+    // Safety limits
+    Max_Dose        : REAL := 10.0;      // Maximum allowable dose
+    Min_Dose        : REAL := 0.0;       // Minimum allowable dose
+
+    // Time step (sampling interval)
+    DeltaT          : REAL := 0.1;       // 100 ms cycle time
+END_VAR
+
+// PID algorithm (executed every 100 ms)
+Error := Dosing_SP - Dosing_PV;
+Integral := Integral + (Error * DeltaT);
+Derivative := (Error - Prev_Error) / DeltaT;
+
+Dosing_Output := (Kp * Error) + (Ki * Integral) + (Kd * Derivative);
+
+// Clamp output to safety limits
+IF Dosing_Output > Max_Dose THEN
+    Dosing_Output := Max_Dose;
+ELSIF Dosing_Output < Min_Dose THEN
+    Dosing_Output := Min_Dose;
+END_IF
+
+// Store current error for next cycle
+Prev_Error := Error;
