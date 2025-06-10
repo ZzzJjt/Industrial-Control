@@ -1,4 +1,76 @@
-**Traffic Light Control System Using 61131-3 Structured Text:**
+PROGRAM TrafficLightControl
+VAR
+    // Inputs
+    PedestrianRequest : BOOL;            // Pedestrian button pressed
+    EmergencyDetected : BOOL;            // Emergency vehicle detected
 
-Write a self-contained 61131-3 structured text program (not a function block) to control a traffic light system. The system should respond to pedestrian push buttons, allowing safe crossing by adjusting traffic light timings accordingly. Additionally, the system must detect the presence of emergency vehicles and prioritize their passage by adjusting the light sequence to provide a clear path. Implement logic to ensure smooth traffic flow while giving priority to safety and emergency response.
+    // Outputs
+    RedLight     : BOOL := FALSE;
+    YellowLight  : BOOL := FALSE;
+    GreenLight   : BOOL := FALSE;
 
+    // Internal State
+    TrafficState : INT := 0;             // 0 = Red, 1 = Green, 2 = Yellow
+    PedestrianActive : BOOL := FALSE;
+
+    // Timers
+    StateTimer : TON;
+END_VAR
+
+// --- Emergency Vehicle Override ---
+// If detected, force green and reset all timing
+IF EmergencyDetected THEN
+    RedLight := FALSE;
+    YellowLight := FALSE;
+    GreenLight := TRUE;
+    TrafficState := 1; // Force state to Green
+    StateTimer(IN := FALSE); // Cancel any ongoing timer
+ELSE
+    CASE TrafficState OF
+        0: // Red
+            RedLight := TRUE;
+            YellowLight := FALSE;
+            GreenLight := FALSE;
+
+            StateTimer(IN := TRUE, PT := T#10s);
+            IF StateTimer.Q THEN
+                IF PedestrianRequest THEN
+                    PedestrianActive := TRUE;
+                    StateTimer(IN := FALSE); // Extend red
+                ELSIF PedestrianActive THEN
+                    // Maintain red for extended duration
+                    StateTimer(IN := TRUE, PT := T#5s);
+                    IF StateTimer.Q THEN
+                        PedestrianActive := FALSE;
+                        TrafficState := 1; // Proceed to green
+                        StateTimer(IN := FALSE);
+                    END_IF;
+                ELSE
+                    TrafficState := 1; // Go to green
+                    StateTimer(IN := FALSE);
+                END_IF;
+            END_IF;
+
+        1: // Green
+            RedLight := FALSE;
+            YellowLight := FALSE;
+            GreenLight := TRUE;
+
+            StateTimer(IN := TRUE, PT := T#15s);
+            IF StateTimer.Q THEN
+                TrafficState := 2; // Go to yellow
+                StateTimer(IN := FALSE);
+            END_IF;
+
+        2: // Yellow
+            RedLight := FALSE;
+            YellowLight := TRUE;
+            GreenLight := FALSE;
+
+            StateTimer(IN := TRUE, PT := T#3s);
+            IF StateTimer.Q THEN
+                TrafficState := 0; // Return to red
+                StateTimer(IN := FALSE);
+            END_IF;
+    END_CASE;
+END_IF;
