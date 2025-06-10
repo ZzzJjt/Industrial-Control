@@ -1,14 +1,87 @@
-**Translate ST To Instruction List:**
+VAR
+    StartButton : BOOL;
+    ManualMode  : BOOL;
+    AutoMode    : BOOL;
+    ArmExtended : BOOL;
+    ItemDetected: BOOL;
+    ProcessActive : BOOL;
+    StepTimer   : TON;
+END_VAR
 
-Translate the following 61131-3 Structured Text program to 61131-3 Instruction List: PROGRAM PickAndPlace VAR ManualButton : BOOL; // Input signal for manual mode AutoButton : BOOL; // Input signal for auto mode ClipButton : BOOL; // Input signal for clip action TransferButton : BOOL; // Input signal for transfer action ReleaseButton : BOOL; // Input signal for release action ConveyorA : BOOL; // Input signal for presence of product on conveyor A ConveyorB : BOOL; // Output signal to control conveyor B RoboticArm : BOOL; // Output signal to control the robotic arm Mode : INT := 0; // Internal variable to store the current mode (0 = manual, 1 = auto) AutoProcess : BOOL := FALSE; // Internal variable to store whether the auto control process is currently running END_VAR
+IF StartButton THEN
+    IF ManualMode THEN
+        ArmExtended := TRUE;
+    ELSIF AutoMode THEN
+        ProcessActive := TRUE;
+    END_IF;
+END_IF;
 
-// Manual mode control process IF ManualButton THEN Mode := 0; // Set mode to manual END_IF
+IF ProcessActive THEN
+    StepTimer(IN := TRUE, PT := T#5s);
+    IF StepTimer.Q THEN
+        ArmExtended := FALSE;
+        ProcessActive := FALSE;
+    END_IF;
+ELSE
+    StepTimer(IN := FALSE);
+END_IF;
 
-IF Mode = 0 THEN // Manual mode IF ClipButton AND ConveyorA THEN RoboticArm := TRUE; // Clip the product ELSIF TransferButton THEN ConveyorB := TRUE; // Transfer the product to conveyor B ELSIF ReleaseButton THEN ConveyorB := FALSE; // Release the product from conveyor B END_IF END_IF
+// === StartButton pressed? ===
+LD StartButton         // Load StartButton
+JMPC CHECK_MODE        // If TRUE, jump to CHECK_MODE
+JMP SKIP_LOGIC         // If FALSE, skip all
 
-// Auto mode control process IF AutoButton THEN Mode := 1; // Set mode to auto END_IF
+// === Check which mode is active ===
+CHECK_MODE:
+// Manual mode?
+LD ManualMode
+JMPC SET_ARM           // If TRUE, jump to extend arm
+// Else check Auto mode
+LD AutoMode
+JMPC START_PROCESS     // If TRUE, activate process
+JMP SKIP_LOGIC         // If neither, skip
 
-IF Mode = 1 THEN // Auto mode IF NOT AutoProcess AND ConveyorA THEN // Only start the process if not currently running and there is a product on conveyor A AutoProcess := TRUE; // Set flag to indicate that the auto process is running RoboticArm := TRUE; // Clip the product WAIT 2; // Wait for 2 seconds to transfer the product ConveyorB := TRUE; // Transfer the product to conveyor B END_IF IF ConveyorB AND NOT ConveyorA THEN // Release the product from conveyor B once it has been transferred and there is no product on conveyor A ConveyorB := FALSE; AutoProcess := FALSE; // Clear the flag to indicate that the auto process is not running END_IF END_IF
+// === Manual: Extend Arm ===
+SET_ARM:
+LD TRUE
+ST ArmExtended         // ArmExtended := TRUE
+JMP SKIP_LOGIC
 
+// === Auto: Set ProcessActive ===
+START_PROCESS:
+LD TRUE
+ST ProcessActive       // ProcessActive := TRUE
 
+// === Evaluate ProcessActive ===
+SKIP_LOGIC:
+LD ProcessActive
+JMPC RUN_TIMER         // If TRUE, go to timer logic
+JMP STOP_TIMER         // If FALSE, disable timer
 
+// === Activate TON Timer ===
+RUN_TIMER:
+LD TRUE
+ST StepTimer.IN        // StepTimer(IN) := TRUE
+LD T#5s
+ST StepTimer.PT        // Preset Time
+// Simulate TON block calling here
+
+// === Timer Done? ===
+LD StepTimer.Q
+JMPC RESET_SEQUENCE    // If TRUE, go reset outputs
+JMP END                // Otherwise, skip
+
+// === Reset logic after timer ===
+RESET_SEQUENCE:
+LD FALSE
+ST ArmExtended
+ST ProcessActive
+JMP END
+
+// === Stop timer when not active ===
+STOP_TIMER:
+LD FALSE
+ST StepTimer.IN        // Disable timer when idle
+
+END:
+NOP
