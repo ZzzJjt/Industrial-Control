@@ -1,6 +1,65 @@
-**Empty Bottle Removal for Packaging Line Using 61131-3 Structured Text:**
+FUNCTION_BLOCK FB_EmptyBottleEjector
+VAR_INPUT
+    BottlePresentSensor : BOOL; // TRUE when any bottle is present
+    EmptyBottleSensor   : BOOL; // TRUE if bottle is empty
+END_VAR
 
-Write a self-contained 61131-3 structured text (ST) program to automate the removal of empty bottles in a packaging line. After bottles are filled, they are transported by a conveyor toward the packaging station. The system includes two proximity sensors: one detects the presence of any bottle, and the second detects only empty bottles. When an empty bottle is detected, a pneumatic cylinder is activated to remove the empty bottle from the conveyor before it reaches the packaging area.
+VAR_OUTPUT
+    ConveyorMotor   : BOOL := TRUE; // Always running
+    EjectCylinder   : BOOL := FALSE;
+END_VAR
 
-Ensure that the program controls the conveyor and cylinder operations efficiently, preventing any empty bottles from continuing to the packaging process, while maintaining smooth operation for filled bottles.
+VAR
+    EjectTimer      : TON; // Timer for cylinder extension duration
+    EjectActive     : BOOL := FALSE; // Internal flag for ejection state
+END_VAR
 
+// Initialize timer
+EjectTimer(IN := FALSE, PT := T#500ms);
+
+// --- Main Detection and Ejection Logic ---
+IF BottlePresentSensor THEN
+    // Check if the bottle is empty
+    IF EmptyBottleSensor THEN
+        // Start ejection process
+        EjectTimer(IN := TRUE); // Start timer for cylinder actuation
+        EjectCylinder := TRUE;
+        EjectActive := TRUE;
+    ELSE
+        // Bottle is full — do not eject
+        EjectTimer(IN := FALSE);
+        IF NOT EjectTimer.Q THEN
+            EjectCylinder := FALSE;
+        END_IF;
+    END_IF;
+
+ELSE
+    // No bottle present — reset timer and cylinder
+    EjectTimer(IN := FALSE);
+    IF NOT EjectTimer.Q THEN
+        EjectCylinder := FALSE;
+    END_IF;
+END_IF;
+
+PROGRAM PLC_PRG
+VAR
+    BottleDetector : FB_EmptyBottleEjector;
+
+    // Simulated inputs
+    BottleDetected : BOOL := TRUE;
+    EmptyBottle : BOOL := TRUE;
+
+    // Outputs
+    MotorOn : BOOL;
+    CylinderOut : BOOL;
+END_VAR
+
+// Call the function block
+BottleDetector(
+    BottlePresentSensor := BottleDetected,
+    EmptyBottleSensor := EmptyBottle
+);
+
+// Map outputs
+MotorOn := BottleDetector.ConveyorMotor;
+CylinderOut := BottleDetector.EjectCylinder;
