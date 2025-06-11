@@ -1,6 +1,83 @@
-**Batch PVC:**
+PROGRAM PLC_PRG
+VAR
+    // Batch Flags
+    bStartBatch         : BOOL := FALSE;
+    bBatchComplete      : BOOL := FALSE;
+    bEmergencyStop      : BOOL := FALSE;
 
-Develop a self-contained program in IEC 61131-3 Structured Text for the sequential control of a reactor in the batch production of polyvinylchloride (PVC) via polymerization of vinyl chloride monomers. The program should follow an ISA-88 control recipe structure and include the following process stages: polymerize, decover, and dry. Each stage should consist of ordered operations, including preparing the reactor by evacuating it to remove oxygen, charging the reactor with demineralized water and surfactants, and reacting by adding vinyl chloride monomer and catalyst while controlling the temperature between 55-60°C until the pressure decreases.
+    // Process Parameters
+    rReactorTempMin     : REAL := 55.0;  // °C
+    rReactorTempMax     : REAL := 60.0;
+    rTargetPressure     : REAL := 0.2;   // bar (indicating completion)
+    tReactionTime       : TIME := T#4h;
+    rWaterVolume        : REAL := 500.0; // L
+    tDryTime            : TIME := T#2h;
 
-Provide detailed content for key methods such as EvacuateReactor, which should handle the removal of oxygen, and AddDemineralizedWater, ensuring precise process parameters and timers are integrated. Additionally, discuss the application of ISA-88 principles in structuring the control recipe and the challenges involved in scaling the recipe for industrial use.
+    // Equipment Status
+    bEvacuationActive   : BOOL := FALSE;
+    bChargingActive     : BOOL := FALSE;
+    bPolymerizing       : BOOL := FALSE;
+    bDecovering         : BOOL := FALSE;
+    bDrying             : BOOL := FALSE;
 
+    // Sensors
+    rReactorTemp        : REAL := 0.0;
+    rReactorPressure    : REAL := 0.0;
+    rWaterAdded         : REAL := 0.0;
+
+    // Timers
+    tmrReaction         : TON;
+    tmrDrying           : TON;
+
+    // State Machine
+    eState              : E_PVC_BATCH_STEP := STEP_IDLE;
+END_VAR
+
+// Emergency Stop Override
+IF bEmergencyStop THEN
+    eState := STEP_ABORTED;
+END_IF;
+
+CASE eState OF
+    STEP_IDLE:
+        IF bStartBatch THEN
+            StartEvacuation();
+            eState := STEP_EVACUATE_REACTOR;
+        END_IF;
+
+    STEP_EVACUATE_REACTOR:
+        IF IsEvacuationDone() THEN
+            AddDemineralizedWater(rWaterVolume);
+            eState := STEP_CHARGE_WATER_SURFACTANT;
+        END_IF;
+
+    STEP_CHARGE_WATER_SURFACTANT:
+        IF IsWaterAndSurfactantAdded() THEN
+            StartPolymerization(rReactorTempMin, rReactorTempMax, tReactionTime);
+            eState := STEP_POLYMERIZATION_PHASE;
+        END_IF;
+
+    STEP_POLYMERIZATION_PHASE:
+        IF IsPolymerizationComplete() THEN
+            StartDecover();
+            eState := STEP_DECOVER_PHASE;
+        END_IF;
+
+    STEP_DECOVER_PHASE:
+        Delay(T#10m); // Simulate decanter time or venting
+        StartDrying(tDryTime);
+        eState := STEP_DRYING_PHASE;
+
+    STEP_DRYING_PHASE:
+        IF IsDryingDone() THEN
+            bBatchComplete := TRUE;
+            eState := STEP_COMPLETE;
+        END_IF;
+
+    STEP_COMPLETE:
+        ; // No action required — handled by higher-level system
+
+    STEP_ABORTED:
+        AbortAllProcesses();
+        bBatchComplete := FALSE;
+END_CASE;
