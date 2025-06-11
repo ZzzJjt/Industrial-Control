@@ -1,28 +1,86 @@
-**Entry/Exit Control for Underground Car Park Using 61131-3 Structured Text:**
+FUNCTION_BLOCK FB_ParkingGaragePassageControl
+VAR_INPUT
+    // Input Sensors / Pulse Flags
+    X1 : BOOL; // Ground floor photoelectric switch
+    X2 : BOOL; // Basement photoelectric switch
+    M1 : BOOL; // Car enters from ground through X1 (pulse)
+    M2 : BOOL; // Car enters from basement through X1 (pulse)
+    M3 : BOOL; // Car enters from basement through X2 (pulse)
+    M4 : BOOL; // Car enters from ground through X2 (pulse)
+END_VAR
 
-Write a PLC program in structured text (ST) according to IEC 61131-3 to control the entry and exit of an underground car park. The system uses the following sensors and actuators:
+VAR_OUTPUT
+    // Traffic Lights
+    Y1 : BOOL := FALSE; // Red light (blocked)
+    Y2 : BOOL := TRUE;  // Green light (allowed)
+END_VAR
 
-	•	Sensors:
-	•	X1: Photoelectric switch at the ground floor entry/exit. It will be ON when a car passes.
-	•	X2: Photoelectric switch at the basement entry/exit. It will be ON when a car passes.
-	•	M1: ON for one scan cycle when a car from the ground floor passes X1.
-	•	M2: ON for one scan cycle when a car from the basement passes X1.
-	•	M3: ON for one scan cycle when a car from the basement passes X2.
-	•	M4: ON for one scan cycle when a car from the ground floor passes X2.
-	•	Intermediate Variables:
-	•	M20: ON during the process of a car entering the passage from the ground floor.
-	•	M30: ON during the process of a car entering the passage from the basement.
-	•	Output Devices:
-	•	Y1: Red lights at the entry/exit of the ground floor and the basement.
-	•	Y2: Green lights at the entry/exit of the ground floor and the basement.
+VAR
+    // Intermediate States
+    M20 : BOOL := FALSE; // Passage occupied by car from ground
+    M30 : BOOL := FALSE; // Passage occupied by car from basement
+END_VAR
 
-Process Description:
+// --- STEP 1: Detect vehicle entry and set passage state ---
+// Entry from ground floor
+IF M1 OR M4 THEN
+    M20 := TRUE;
+END_IF;
 
-The entry and exit of the underground car park is controlled by a single lane passage, with traffic lights regulating car movement. The red lights (Y1) prohibit cars from entering or leaving, while the green lights (Y2) allow movement.
+// Entry from basement
+IF M2 OR M3 THEN
+    M30 := TRUE;
+END_IF;
 
-	•	When a car enters the passage from the ground floor entry, the red lights at both the ground floor and basement turn ON, while the green lights turn OFF, preventing any other cars from entering or leaving until the car passes through the passage.
-	•	Similarly, when a car enters from the basement, the red lights will turn ON at both entry points, prohibiting other vehicles from entering or leaving until the car passes through.
-	•	When the passage is clear, the green lights will turn ON again, allowing cars to enter or exit freely.
-	•	Initially, the PLC should set the green lights ON and the red lights OFF to indicate free movement.
+// --- STEP 2: Detect vehicle exit and reset passage state ---
+// Exit to basement from ground
+IF M3 OR M4 THEN
+    M20 := FALSE;
+END_IF;
 
+// Exit to ground from basement
+IF M1 OR M2 THEN
+    M30 := FALSE;
+END_IF;
 
+// --- STEP 3: Control traffic lights based on passage status ---
+IF M20 OR M30 THEN
+    // Passage is occupied — block further entry
+    Y1 := TRUE;
+    Y2 := FALSE;
+ELSE
+    // Passage is free — allow entry
+    Y1 := FALSE;
+    Y2 := TRUE;
+END_IF;
+
+PROGRAM PLC_PRG
+VAR
+    GaragePassage : FB_ParkingGaragePassageControl;
+
+    // Simulated inputs
+    SensorX1 : BOOL := FALSE;
+    SensorX2 : BOOL := FALSE;
+    PulseM1 : BOOL := FALSE;
+    PulseM2 : BOOL := FALSE;
+    PulseM3 : BOOL := FALSE;
+    PulseM4 : BOOL := FALSE;
+
+    // Outputs
+    RedLight : BOOL;
+    GreenLight : BOOL;
+END_VAR
+
+// Call the function block
+GaragePassage(
+    X1 := SensorX1,
+    X2 := SensorX2,
+    M1 := PulseM1,
+    M2 := PulseM2,
+    M3 := PulseM3,
+    M4 := PulseM4
+);
+
+// Map outputs
+RedLight := GaragePassage.Y1;
+GreenLight := GaragePassage.Y2;
