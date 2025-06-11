@@ -1,7 +1,82 @@
-**Interlock Safety Doors:**
+FUNCTION_BLOCK FB_DoorInterlockSystem
+VAR_INPUT
+    // Door status inputs – TRUE = Closed
+    DOOR_1_CLOSED: BOOL := FALSE;
+    DOOR_2_CLOSED: BOOL := FALSE;
+    DOOR_3_CLOSED: BOOL := FALSE;
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement interlocks for safety doors in a chemical reactor. The program should monitor the status of the safety doors and ensure that the reactor remains in a safe state whenever any door is open.
+    // Operator input
+    START_BUTTON: BOOL := FALSE;
+    RESET_BUTTON: BOOL := FALSE;
 
-The interlock logic should prevent the reactor from starting or continuing operation if any safety door is not securely closed. Additionally, if a safety door is opened during reactor operation, the program should immediately trigger an emergency shutdown sequence, including deactivating the reactor and stopping any hazardous processes.
+    // Reactor operational state feedback
+    REACTOR_RUNNING: BOOL := FALSE;
+END_VAR
 
-This interlock ensures that the reactor only operates when all safety doors are securely closed, providing an essential safeguard against accidental exposure to hazardous conditions. Discuss the importance of safety door interlocks in preventing operator access to dangerous environments and ensuring compliance with safety standards in chemical processing.
+VAR_OUTPUT
+    // Outputs to control system
+    ALLOW_START: BOOL := FALSE;
+    EMERGENCY_SHUTDOWN: BOOL := FALSE;
+    REACTOR_ENABLE: BOOL := FALSE;
+    ALARM_ACTIVE: BOOL := FALSE;
+END_VAR
+
+VAR
+    // Internal Flags
+    bAllDoorsClosed: BOOL := FALSE;
+    bShutdownLatched: BOOL := FALSE;
+END_VAR
+
+// Evaluate current door status
+bAllDoorsClosed := DOOR_1_CLOSED AND DOOR_2_CLOSED AND DOOR_3_CLOSED;
+
+// Allow start only when all doors are closed
+ALLOW_START := bAllDoorsClosed AND NOT bShutdownLatched;
+
+// --- START REQUEST HANDLING ---
+IF START_BUTTON AND ALLOW_START THEN
+    REACTOR_ENABLE := TRUE;
+END_IF;
+
+// --- SHUTDOWN DURING OPERATION IF DOORS OPEN ---
+IF REACTOR_RUNNING AND NOT bAllDoorsClosed THEN
+    EMERGENCY_SHUTDOWN := TRUE;
+    REACTOR_ENABLE := FALSE;
+    ALARM_ACTIVE := TRUE;
+END_IF;
+
+// --- LATCHED SHUTDOWN STATE ---
+IF EMERGENCY_SHUTDOWN THEN
+    bShutdownLatched := TRUE;
+    ALARM_ACTIVE := TRUE;
+END_IF;
+
+// --- MANUAL RESET AFTER SHUTDOWN ---
+IF bShutdownLatched AND RESET_BUTTON AND bAllDoorsClosed THEN
+    bShutdownLatched := FALSE;
+    EMERGENCY_SHUTDOWN := FALSE;
+    ALARM_ACTIVE := FALSE;
+END_IF;
+
+PROGRAM PLC_PRG
+VAR
+    DoorInterlock: FB_DoorInterlockSystem;
+
+    // Simulated or real-world inputs
+    Door1Status: BOOL := DI1;        // TRUE = closed
+    Door2Status: BOOL := DI2;        // TRUE = closed
+    Door3Status: BOOL := DI3;        // TRUE = closed
+    StartBtn: BOOL := DI4;           // Momentary pushbutton
+    ResetBtn: BOOL := DI5;           // Momentary pushbutton
+    ReactorIsRunning: BOOL := M1.0;  // From drive or motor feedback
+END_VAR
+
+// Call function block with real-world inputs
+DoorInterlock(
+    DOOR_1_CLOSED := Door1Status,
+    DOOR_2_CLOSED := Door2Status,
+    DOOR_3_CLOSED := Door3Status,
+    START_BUTTON := StartBtn,
+    RESET_BUTTON := ResetBtn,
+    REACTOR_RUNNING := ReactorIsRunning
+);
