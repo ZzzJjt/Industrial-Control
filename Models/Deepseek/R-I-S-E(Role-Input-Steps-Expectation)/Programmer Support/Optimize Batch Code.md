@@ -1,85 +1,78 @@
-**Optimize Batch Code:**
+PROGRAM PLC_PRG
+VAR
+    // Batch process states
+    eBatchState : E_BATCH_STATE := E_BATCH_STATE_IDLE;
 
-Please make suggestions on how to optimize the following code: PROGRAM PolyethyleneBatchControl VAR // States for the batch process state: INT := 0; timer: TON; stepStartTime: TIME := T#0s;
-// Process parameters
-rawMatPrepTemp: REAL := 70.0; // �C
-rawMatPrepPressure: REAL := 1.0; // bar
-polymerizationTemp: REAL := 150.0; // �C
-polymerizationPressure: REAL := 30.0; // bar
-quenchingTemp: REAL := 25.0; // �C
-quenchingPressure: REAL := 5.0; // bar
-dryingTemp: REAL := 80.0; // �C
-pelletizingTemp: REAL := 150.0; // �C
-qualityControlTemp: REAL := 25.0; // �C
-packagingStorageTemp: REAL := 20.0; // �C
+    // Timers for each step
+    tmrStepTimer : TON;
+
+    // Flags for step initialization
+    bStepInitialized : BOOL := FALSE;
+
+    // Process parameters (example values)
+    rTargetTemp : REAL := 0.0;
+    rTargetPressure : REAL := 0.0;
 END_VAR
 
-METHOD UpdateTemperaturesAndPressures: BOOL 
-// Update temperatures and pressures for each process step CASE state OF 1: (* Raw material preparation ) SetTemperatureAndPressure(rawMatPrepTemp, rawMatPrepPressure); 
-2: ( Polymerization ) SetTemperatureAndPressure(polymerizationTemp, polymerizationPressure); 
-3: ( Quenching ) SetTemperatureAndPressure(quenchingTemp, quenchingPressure); 
-4: ( Drying ) SetTemperatureAndPressure(dryingTemp, quenchingPressure); 
-5: ( Pelletizing ) SetTemperatureAndPressure(pelletizingTemp, quenchingPressure); 
-6: ( Quality control ) SetTemperatureAndPressure(qualityControlTemp, quenchingPressure); 
-7: ( Packaging and storage *) SetTemperatureAndPressure(packagingStorageTemp, quenchingPressure); END_CASE;
-RETURN TRUE;
-END_METHOD
-
-METHOD SetTemperatureAndPressure: BOOL (temp: REAL; pressure: REAL) // Set temperature and pressure for the current process step // Dummy function for demonstration purposes RETURN TRUE; END_METHOD
-
-(* Main control loop ) LOOP CASE state OF 0: ( Start the batch process *) state := 1; stepStartTime := NOW();
-    1: (* Raw material preparation *)
-        timer(IN:=NOT timer.Q, PT:=T#5s);
-        IF timer.Q THEN
-            state := 2;
-            stepStartTime := NOW();
-            timer(IN:=FALSE);
+CASE eBatchState OF
+    E_BATCH_STATE_IDLE:
+        IF StartBatch THEN
+            eBatchState := E_BATCH_STATE_RAW_MATERIAL_PREP;
+            bStepInitialized := FALSE;
         END_IF;
 
-    2: (* Polymerization *)
-        timer(IN:=NOT timer.Q, PT:=T#30m);
-        IF timer.Q THEN
-            state := 3;
-            stepStartTime := NOW();
-            timer(IN:=FALSE);
-        END_IF;
+    E_BATCH_STATE_RAW_MATERIAL_PREP:
+        StepControl(duration := T#10s, nextState := E_BATCH_STATE_POLYMERIZATION);
 
-    3: (* Quenching *)
-        timer(IN:=NOT timer.Q, PT:=T#15m);
-        IF timer.Q THEN
-            state := 4;
-            stepStartTime := NOW();
-            timer(IN:=FALSE);
-        END_IF;
+    E_BATCH_STATE_POLYMERIZATION:
+        StepControl(duration := T#30s, nextState := E_BATCH_STATE_QUENCHING);
 
-    4: (* Drying *)
-        timer(IN:=NOT timer.Q, PT:=T#1h);
-        IF timer.Q THEN
-            state := 5;
-            stepStartTime := NOW();
-            timer(IN:=FALSE);
-        END_IF;
+    E_BATCH_STATE_QUENCHING:
+        StepControl(duration := T#15s, nextState := E_BATCH_STATE_DRYING);
 
-    5: (* Pelletizing *)
-        timer(IN:=NOT timer.Q, PT:=T#1h30m); 
-IF timer.Q THEN 
-state := 6;
-stepStartTime := NOW(); 
-timer(IN:=FALSE); 
-END_IF;
-6: (* Quality control *) timer(IN:=NOT timer.Q, PT:=T#2h); IF timer.Q THEN state := 7; stepStartTime := NOW(); timer(IN:=FALSE); END_IF;
-7: (* Packaging and storage *)
-    timer(IN:=NOT timer.Q, PT:=T#3h);
-    IF timer.Q THEN
-        // Batch process complete
-        state := 0;
-        timer(IN:=FALSE);
-    END_IF;
+    E_BATCH_STATE_DRYING:
+        StepControl(duration := T#20s, nextState := E_BATCH_STATE_PELLETIZING);
+
+    E_BATCH_STATE_PELLETIZING:
+        StepControl(duration := T#25s, nextState := E_BATCH_STATE_QA);
+
+    E_BATCH_STATE_QA:
+        StepControl(duration := T#10s, nextState := E_BATCH_STATE_PACKAGING);
+
+    E_BATCH_STATE_PACKAGING:
+        StepControl(duration := T#15s, nextState := E_BATCH_STATE_COMPLETE [ ](c) 
+
+
+    CASE eBatchState OF
+    E_BATCH_STATE_RAW_MATERIAL_PREP:
+        rTargetTemp := 80.0;     // °C
+        rTargetPressure := 1.0;  // bar
+
+    E_BATCH_STATE_POLYMERIZATION:
+        rTargetTemp := 220.0;
+        rTargetPressure := 30.0;
+
+    E_BATCH_STATE_QUENCHING:
+        rTargetTemp := 40.0;
+        rTargetPressure := 1.5;
+
+    E_BATCH_STATE_DRYING:
+        rTargetTemp := 100.0;
+        rTargetPressure := 1.2;
+
+    E_BATCH_STATE_PELLETIZING:
+        rTargetTemp := 180.0;
+        rTargetPressure := 20.0;
+
+    E_BATCH_STATE_QA, E_BATCH_STATE_PACKAGING:
+        rTargetTemp := 25.0;
+        rTargetPressure := 1.0;
+
+    ELSE
+        rTargetTemp := 0.0;
+        rTargetPressure := 0.0;
 END_CASE;
 
-UpdateTemperaturesAndPressures();
-
-END_LOOP; END_PROGRAM
-
-Consider that the program is executed cyclically in a task according to the 61131-3 programming model. Thus no explicit main loop is needed. Please fix the code by removing the 'LOOP'.
-
+// Apply conditions to physical system here (e.g., write to PID setpoints)
+ApplyTemperature(rTargetTemp);
+ApplyPressure(rTargetPressure);
