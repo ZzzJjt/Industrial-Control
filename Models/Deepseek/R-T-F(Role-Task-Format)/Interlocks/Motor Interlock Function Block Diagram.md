@@ -1,8 +1,42 @@
-**Motor Interlock Function Block Diagram:**
+FUNCTION_BLOCK MotorInterlock
+VAR_INPUT
+    Equipment1Running : BOOL; // Running status of Equipment 1 (TRUE = Running, FALSE = Stopped)
+    Equipment2Running : BOOL; // Running status of Equipment 2 (TRUE = Running, FALSE = Stopped)
+    Equipment3Running : BOOL; // Running status of Equipment 3 (TRUE = Running, FALSE = Stopped)
+END_VAR
 
-Design a motor interlock as a function block diagram that prevents the motor from starting while other associated equipment is still running. The interlock should monitor the operational status of surrounding equipment and block the motor start command if any equipment is still active. Include inputs from sensors or status indicators and outputs that control the motor start circuit.
+VAR_OUTPUT
+    AllowStart : BOOL; // Output to allow motor start (TRUE = Allowed, FALSE = Blocked)
+END_VAR
 
-Provide the implementation of the MotorInterlock function block in IEC 61131-3 Structured Text. This function block should check the statuses of relevant equipment (e.g., EquipmentRunning), and if all equipment is stopped, it should allow the motor to start by setting the output to TRUE. If any equipment is still running, the output should remain FALSE, preventing the motor from starting.
+METHOD Execute : BOOL
+BEGIN
+    // Determine if all associated equipment is stopped
+    AllowStart := NOT Equipment1Running AND NOT Equipment2Running AND NOT Equipment3Running;
 
-Discuss the role of motor interlocks in industrial safety and how this logic prevents premature or unsafe motor operation.
+    RETURN TRUE;
+END_METHOD
 
+END_FUNCTION_BLOCK
+
+PROGRAM MainControl
+VAR
+    MotorLock : MotorInterlock;
+    StartButtonPressed : BOOL; // Input from start button
+    MotorRunning : BOOL;       // Output indicating motor status
+END_VAR
+
+// Simulated input values for demonstration purposes
+MotorLock.Equipment1Running := FALSE; // Assume Equipment 1 is stopped
+MotorLock.Equipment2Running := FALSE; // Assume Equipment 2 is stopped
+MotorLock.Equipment3Running := FALSE; // Assume Equipment 3 is stopped
+
+// Call the MotorInterlock function block
+MotorLock.Execute();
+
+// Check if the motor can start based on the interlock logic
+IF StartButtonPressed AND MotorLock.AllowStart THEN
+    MotorRunning := TRUE; // Start the motor
+ELSE
+    MotorRunning := FALSE; // Do not start the motor
+END_IF;
