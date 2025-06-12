@@ -1,3 +1,36 @@
-**Pneumatic System Control Using 61131-3 Structured Text:**
+PROGRAM PneumaticSystemControl
+VAR
+    FlowInput : REAL; // Sensor input for flow rate (SLPM)
+    PressureInput : REAL; // Sensor input for pressure (bar)
+    FlowSetpoint : REAL := 50.0; // Setpoint for flow rate (SLPM)
+    MinPressure : REAL := 5.5; // Minimum acceptable pressure (bar)
+    MaxPressure : REAL := 6.0; // Maximum acceptable pressure (bar)
 
-Write a self-contained 61131-3 structured text program (not a function block) to control a pneumatic system with a control loop frequency of 100 ms. The system should regulate the flow of air to actuators based on input signals, maintaining a flow rate of 50 standard liters per minute. The system must also ensure that the pressure remains within the specified range of 5.5 to 6 bar. Implement safety checks to handle any deviations in flow or pressure and ensure efficient and reliable operation under varying load conditions.
+    FlowValveOutput : BOOL := FALSE; // Output to control the flow valve
+    PressureReliefValve : BOOL := FALSE; // Output to control the pressure relief valve
+    FlowError : BOOL := FALSE; // Flag indicating flow error
+    PressureError : BOOL := FALSE; // Flag indicating pressure error
+END_VAR
+
+// Flow control
+IF FlowInput < FlowSetpoint THEN
+    FlowValveOutput := TRUE; // Open the valve to increase flow
+ELSE
+    FlowValveOutput := FALSE; // Hold or close the valve
+END_IF;
+
+// Pressure safety logic
+IF PressureInput < MinPressure OR PressureInput > MaxPressure THEN
+    PressureError := TRUE;
+    PressureReliefValve := TRUE; // Activate the pressure relief valve
+ELSE
+    PressureError := FALSE;
+    PressureReliefValve := FALSE; // Deactivate the pressure relief valve
+END_IF;
+
+// Flow deviation detection
+IF ABS(FlowInput - FlowSetpoint) > 5.0 THEN
+    FlowError := TRUE; // Set flow error flag if deviation exceeds 5.0 SLPM
+ELSE
+    FlowError := FALSE; // Clear flow error flag
+END_IF;
