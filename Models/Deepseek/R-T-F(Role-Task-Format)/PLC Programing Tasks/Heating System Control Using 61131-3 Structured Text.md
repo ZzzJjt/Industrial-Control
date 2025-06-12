@@ -1,4 +1,27 @@
-**Heating System Control Using 61131-3 Structured Text:**
+PROGRAM HeatingSystemControl
+VAR
+    TempSensor1, TempSensor2, TempSensor3 : REAL; // Temperature readings from three sensors
+    AvgTemp : REAL;                               // Average temperature
+    HeatingOn : BOOL := FALSE;                     // Flag indicating if the heater is on
+    SensorFault : BOOL := FALSE;                   // Flag indicating if there is a sensor fault
+END_VAR
 
-Write a self-contained 61131-3 structured text program (not a function block) to control the temperature of a heating system. The system should use input from three temperature sensors to automatically turn the heating on and off, maintaining a constant temperature range between 20°C and 22°C. The program must ensure smooth temperature regulation and prioritize energy efficiency by minimizing frequent switching. Safety measures should be implemented to handle sensor faults or temperature deviations beyond the specified range.
+// Compute average temperature
+AvgTemp := (TempSensor1 + TempSensor2 + TempSensor3) / 3.0;
 
+// Check for any sensor out of safe bounds
+IF (TempSensor1 < 10.0 OR TempSensor1 > 30.0) OR 
+   (TempSensor2 < 10.0 OR TempSensor2 > 30.0) OR 
+   (TempSensor3 < 10.0 OR TempSensor3 > 30.0) THEN
+    SensorFault := TRUE;
+    HeatingOn := FALSE; // Force off if fault detected
+ELSE
+    SensorFault := FALSE;
+
+    // Hysteresis control for energy-efficient switching
+    IF NOT HeatingOn AND AvgTemp < 20.0 THEN
+        HeatingOn := TRUE;
+    ELSIF HeatingOn AND AvgTemp > 22.0 THEN
+        HeatingOn := FALSE;
+    END_IF;
+END_IF;
