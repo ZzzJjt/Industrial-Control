@@ -1,14 +1,117 @@
-**Translate ST To Instruction List:**
+PROGRAM PickAndPlace
+VAR
+    ManualMode : BOOL;
+    AutoMode : BOOL;
+    StartButton : BOOL;
+    StopButton : BOOL;
+    ProcessFlag : BOOL;
+    TimerCounter : INT := 0;
+    TimerMax : INT := 100; // Simulating a 1-second wait with a counter
+END_VAR
 
-Translate the following 61131-3 Structured Text program to 61131-3 Instruction List: PROGRAM PickAndPlace VAR ManualButton : BOOL; // Input signal for manual mode AutoButton : BOOL; // Input signal for auto mode ClipButton : BOOL; // Input signal for clip action TransferButton : BOOL; // Input signal for transfer action ReleaseButton : BOOL; // Input signal for release action ConveyorA : BOOL; // Input signal for presence of product on conveyor A ConveyorB : BOOL; // Output signal to control conveyor B RoboticArm : BOOL; // Output signal to control the robotic arm Mode : INT := 0; // Internal variable to store the current mode (0 = manual, 1 = auto) AutoProcess : BOOL := FALSE; // Internal variable to store whether the auto control process is currently running END_VAR
+IF ManualMode THEN
+    IF StartButton THEN
+        ProcessFlag := TRUE;
+    ELSIF StopButton THEN
+        ProcessFlag := FALSE;
+    END_IF;
+ELSIF AutoMode THEN
+    IF NOT ProcessFlag THEN
+        ProcessFlag := TRUE;
+        TimerCounter := 0; // Reset timer
+    ELSE
+        TimerCounter := TimerCounter + 1;
+        IF TimerCounter >= TimerMax THEN
+            ProcessFlag := FALSE;
+            TimerCounter := 0; // Reset timer
+        END_IF;
+    END_IF;
+END_IF;
 
-// Manual mode control process IF ManualButton THEN Mode := 0; // Set mode to manual END_IF
+// Output control based on ProcessFlag
+IF ProcessFlag THEN
+    OutputSignal := TRUE;
+ELSE
+    OutputSignal := FALSE;
+END_IF;
+END_PROGRAM
 
-IF Mode = 0 THEN // Manual mode IF ClipButton AND ConveyorA THEN RoboticArm := TRUE; // Clip the product ELSIF TransferButton THEN ConveyorB := TRUE; // Transfer the product to conveyor B ELSIF ReleaseButton THEN ConveyorB := FALSE; // Release the product from conveyor B END_IF END_IF
+PROGRAM PickAndPlace
+VAR
+    ManualMode : BOOL;
+    AutoMode : BOOL;
+    StartButton : BOOL;
+    StopButton : BOOL;
+    ProcessFlag : BOOL;
+    TimerCounter : INT := 0;
+    TimerMax : INT := 100; // Simulating a 1-second wait with a counter
+    OutputSignal : BOOL;
+END_VAR
 
-// Auto mode control process IF AutoButton THEN Mode := 1; // Set mode to auto END_IF
+// Check if in Manual Mode
+LD ManualMode          // Load ManualMode
+JMPF L_ManualMode_False // Jump to L_ManualMode_False if false
 
-IF Mode = 1 THEN // Auto mode IF NOT AutoProcess AND ConveyorA THEN // Only start the process if not currently running and there is a product on conveyor A AutoProcess := TRUE; // Set flag to indicate that the auto process is running RoboticArm := TRUE; // Clip the product WAIT 2; // Wait for 2 seconds to transfer the product ConveyorB := TRUE; // Transfer the product to conveyor B END_IF IF ConveyorB AND NOT ConveyorA THEN // Release the product from conveyor B once it has been transferred and there is no product on conveyor A ConveyorB := FALSE; AutoProcess := FALSE; // Clear the flag to indicate that the auto process is not running END_IF END_IF
+// Inside Manual Mode
+LD StartButton         // Load StartButton
+JMPC L_StartButton_True // Jump to L_StartButton_True if true
+LD StopButton          // Load StopButton
+JMPC L_StopButton_True  // Jump to L_StopButton_True if true
+JMP End_ModeCheck       // Exit Manual Mode check
 
+L_StartButton_True:
+LD TRUE                // Load TRUE
+ST ProcessFlag         // Store TRUE to ProcessFlag
+JMP End_ModeCheck       // Exit Manual Mode check
 
+L_StopButton_True:
+LD FALSE               // Load FALSE
+ST ProcessFlag         // Store FALSE to ProcessFlag
+JMP End_ModeCheck       // Exit Manual Mode check
 
+L_ManualMode_False:
+LD AutoMode            // Load AutoMode
+JMPF L_AutoMode_False   // Jump to L_AutoMode_False if false
+
+// Inside Auto Mode
+LD ProcessFlag         // Load ProcessFlag
+JMPF L_ProcessFlag_False // Jump to L_ProcessFlag_False if false
+
+// ProcessFlag is TRUE
+INC TimerCounter       // Increment TimerCounter
+LD TimerCounter        // Load TimerCounter
+LD TimerMax            // Load TimerMax
+LE                     // Compare TimerCounter <= TimerMax
+JMPC L_TimerNotExpired  // Jump to L_TimerNotExpired if true
+
+// Timer expired
+LD FALSE               // Load FALSE
+ST ProcessFlag         // Store FALSE to ProcessFlag
+LD 0                   // Load 0
+ST TimerCounter        // Store 0 to TimerCounter
+JMP End_ModeCheck       // Exit Auto Mode check
+
+L_TimerNotExpired:
+JMP End_ModeCheck       // Exit Auto Mode check
+
+L_ProcessFlag_False:
+LD TRUE                // Load TRUE
+ST ProcessFlag         // Store TRUE to ProcessFlag
+LD 0                   // Load 0
+ST TimerCounter        // Store 0 to TimerCounter
+
+End_ModeCheck:
+
+// Control OutputSignal based on ProcessFlag
+LD ProcessFlag         // Load ProcessFlag
+JMPC L_OutputTrue       // Jump to L_OutputTrue if true
+LD FALSE               // Load FALSE
+ST OutputSignal        // Store FALSE to OutputSignal
+JMP End_Program         // Exit program
+
+L_OutputTrue:
+LD TRUE                // Load TRUE
+ST OutputSignal        // Store TRUE to OutputSignal
+
+End_Program:
+END_PROGRAM
