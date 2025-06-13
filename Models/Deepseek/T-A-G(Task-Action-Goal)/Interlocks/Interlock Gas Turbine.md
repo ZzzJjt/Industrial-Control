@@ -1,16 +1,126 @@
-**Interlock Gas Turbine:**
+PROGRAM GAS_TURBINE_INTERLOCKS
+VAR_INPUT
+    Execute : BOOL;          // Starts the interlock checks
+    EGT : REAL;              // Exhaust Gas Temperature (°C)
+    Turbine_Speed : REAL;    // Turbine Speed (RPM)
+    Flame_Present : BOOL;    // Flame Presence Signal
+    Lub_Oil_Pressure : REAL; // Lubrication Oil Pressure (bar)
+    Cool_Water_Flow : REAL;  // Cooling Water Flow Rate (m³/h)
+    Fuel_Supply_Pressure : REAL; // Fuel Supply Pressure (MPa)
+    Gen_Stator_Temp : REAL;  // Generator Stator Temperature (°C)
+    Vibration_Level : REAL;  // Vibration Level (mm/s RMS)
+    Bearing_Temp : REAL;     // Bearing Temperature (°C)
+    Emergency_Stop_Button : BOOL; // Manual Emergency Stop Button
+END_VAR
 
-Develop a complete list of interlocks required for a gas turbine in a power plant. These interlocks are essential for ensuring safe operation and protecting the equipment from damage or failure. The list includes critical safety conditions and the corresponding actions to prevent hazardous situations:
+VAR_OUTPUT
+    Turbine_Shutdown : BOOL; // Status of Turbine Shutdown
+    Fuel_Valve_Close : BOOL; // Status of Fuel Valve Closure
+    Alarm_Triggered : BOOL;  // Status of Alarm
+    Load_Reduction : BOOL;   // Status of Load Reduction
+    Error : BOOL;            // General error flag
+    ErrorID : DWORD;         // Detailed error code
+END_VAR
 
-	1.	Overtemperature Interlock: Shutdown the turbine if the exhaust gas temperature exceeds a predefined limit (e.g., 650°C) to prevent thermal damage to turbine components.
-	2.	Overspeed Interlock: Trigger an emergency stop if the turbine rotor speed exceeds its maximum operating threshold (e.g., 105% of nominal speed), ensuring the protection of mechanical components.
-	3.	Overpressure Interlock: Open the pressure relief valve if the pressure in the combustion chamber exceeds safe levels (e.g., 30 bar) to prevent pressure-related damage or explosion.
-	4.	Low Lubrication Pressure Interlock: Stop the turbine if lubrication oil pressure falls below the safe operating limit (e.g., 1.5 bar) to avoid bearing or rotor damage due to insufficient lubrication.
-	5.	High Vibration Interlock: Shut down the turbine if excessive vibration is detected (e.g., vibration amplitude exceeds 10 mm/s), which could indicate mechanical imbalance or impending failure.
-	6.	Flame Failure Interlock: Immediately stop fuel flow and trigger an alarm if the flame in the combustion chamber extinguishes, preventing unburned fuel accumulation and potential explosion risks.
-	7.	Fuel Gas Pressure Low Interlock: Close the fuel valve and stop the turbine if the fuel gas pressure drops below the required minimum (e.g., 2 bar) to avoid incomplete combustion.
-	8.	Cooling Water Flow Interlock: Shutdown the turbine if cooling water flow falls below the minimum safe flow rate (e.g., 200 L/min), ensuring the turbine components do not overheat.
-	9.	Compressor Surge Interlock: Activate a bypass valve or reduce load if the compressor experiences a surge condition, preventing damage to the compressor blades.
-	10.	Emergency Stop Interlock: Provide a manual emergency stop button that immediately shuts down the turbine and isolates fuel supply in case of any critical malfunction.
+VAR
+    lastExecute : BOOL := FALSE; // Last state of the Execute input
+END_VAR
 
-These interlocks play a crucial role in protecting the gas turbine from overheating, overpressure, and mechanical failure, ensuring safe and efficient operation in a power plant environment. Discuss how these interlocks are integrated into the overall turbine control system and their importance in maintaining safety and operational integrity.
+METHOD Execute : BOOL
+BEGIN
+    IF R_TRIG(lastExecute, Execute).Q THEN
+        // Reset outputs
+        Turbine_Shutdown := FALSE;
+        Fuel_Valve_Close := FALSE;
+        Alarm_Triggered := FALSE;
+        Load_Reduction := FALSE;
+        Error := FALSE;
+        ErrorID := 0;
+
+        // Check for EGT overtemperature
+        IF EGT > 650.0 THEN
+            Turbine_Shutdown := TRUE;
+            Error := TRUE;
+            ErrorID := 1; // EGT overtemperature detected
+        END_IF;
+
+        // Check for overspeed
+        IF Turbine_Speed > 3000.0 THEN
+            Turbine_Shutdown := TRUE;
+            Error := TRUE;
+            ErrorID := 2; // Overspeed detected
+        END_IF;
+
+        // Check for flame failure
+        IF NOT Flame_Present THEN
+            Fuel_Valve_Close := TRUE;
+            Turbine_Shutdown := TRUE;
+            Error := TRUE;
+            ErrorID := 3; // Flame failure detected
+        END_IF;
+
+        // Check for lubrication oil pressure low
+        IF Lub_Oil_Pressure < 1.5 THEN
+            Alarm_Triggered := TRUE;
+            Turbine_Shutdown := TRUE;
+            Error := TRUE;
+            ErrorID := 4; // Lubrication oil pressure low
+        END_IF;
+
+        // Check for cooling water flow low
+        IF Cool_Water_Flow < 10.0 THEN
+            Alarm_Triggered := TRUE;
+            Turbine_Shutdown := TRUE;
+            Error := TRUE;
+            ErrorID := 5; // Cooling water flow low
+        END_IF;
+
+        // Check for fuel supply pressure low
+        IF Fuel_Supply_Pressure < 1.0 THEN
+            Alarm_Triggered := TRUE;
+            Fuel_Valve_Close := TRUE;
+            Error := TRUE;
+            ErrorID := 6; // Fuel supply pressure low
+        END_IF;
+
+        // Check for generator stator temperature high
+        IF Gen_Stator_Temp > 120.0 THEN
+            Alarm_Triggered := TRUE;
+            Load_Reduction := TRUE;
+            Error := TRUE;
+            ErrorID := 7; // Generator stator temperature high
+        END_IF;
+
+        // Check for vibration exceedance
+        IF Vibration_Level > 5.0 THEN
+            Alarm_Triggered := TRUE;
+            Turbine_Shutdown := TRUE;
+            Error := TRUE;
+            ErrorID := 8; // Vibration exceedance detected
+        END_IF;
+
+        // Check for bearing temperature high
+        IF Bearing_Temp > 100.0 THEN
+            Alarm_Triggered := TRUE;
+            Turbine_Shutdown := TRUE;
+            Error := TRUE;
+            ErrorID := 9; // Bearing temperature high
+        END_IF;
+
+        // Check for emergency stop
+        IF Emergency_Stop_Button THEN
+            Turbine_Shutdown := TRUE;
+            Error := TRUE;
+            ErrorID := 10; // Emergency stop activated
+        END_IF;
+    END_IF;
+
+    lastExecute := Execute;
+    RETURN TRUE;
+END_METHOD
+
+// Main execution loop
+Execute();
+
+
+
