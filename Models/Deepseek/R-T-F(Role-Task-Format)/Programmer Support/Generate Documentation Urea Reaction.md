@@ -1,61 +1,140 @@
-**Generate Documentation Urea Reaction:**
+// Initialize timers
+Timer_Load(IN := FALSE);
+Timer_Reaction(IN := FALSE);
+Timer_Shutdown(IN := FALSE);
 
-Generate a developer documentation for the following code: PROGRAM UreaReactionControl VAR // Inputs stAmmoniaValve : BOOL; // TRUE when ammonia valve is open stCO2Valve : BOOL; // TRUE when CO2 valve is open rCurrentPressure : REAL; rCurrentTemperature : REAL;
-// Outputs
-stAmmoniaValveControl : BOOL; // TRUE to open ammonia valve
-stCO2ValveControl : BOOL; // TRUE to open CO2 valve
+// Step 1: Raw Material Loading
+IF RawMaterialReady AND NOT Step1_Complete THEN
+    Timer_Load(IN := TRUE);
+    Timer_Load(PT := LoadingDuration);
+    LoadValveOpen := TRUE;
+END_IF;
 
-// Internal variables
-stStep1 : BOOL := FALSE; // Load raw materials
-stStep2 : BOOL := FALSE; // Control reaction
-stReactionFinished : BOOL := FALSE; // Reaction finished flag
+IF Timer_Load.Q THEN
+    Timer_Load(IN := FALSE);
+    LoadValveOpen := FALSE;
+    Step1_Complete := TRUE;
+END_IF;
 
-// Parameters
-rTargetPressure : REAL := 175.0; // Target reactor pressure in bars
-rPressureTolerance : REAL := 5.0; // Pressure tolerance in bars
-rTargetTemperature : REAL := 185.0; // Target reactor temperature in �C
-rTemperatureTolerance : REAL := 2.0; // Temperature tolerance in �C
-tReactionTime : TIME := T#30m; // Total reaction time
-tReactionTimer : TIME; // Reaction timer
+// Step 2: Reaction Control
+IF Step1_Complete AND NOT Step2_Complete THEN
+    Timer_Reaction(IN := TRUE);
+    Timer_Reaction(PT := ReactionDuration);
+    ReactionValveOpen := TRUE;
+END_IF;
+
+IF Timer_Reaction.Q THEN
+    Timer_Reaction(IN := FALSE);
+    ReactionValveOpen := FALSE;
+    Step2_Complete := TRUE;
+END_IF;
+
+// Final Step: Automatic Shutdown
+IF Step2_Complete AND NOT ReactionComplete THEN
+    Timer_Shutdown(IN := TRUE);
+    Timer_Shutdown(PT := ShutdownDelay);
+END_IF;
+
+IF Timer_Shutdown.Q THEN
+    Timer_Shutdown(IN := FALSE);
+    ShutdownValveOpen := TRUE;
+    ReactionComplete := TRUE;
+END_IF;
+
+PROGRAM UreaReactionControl
+VAR
+    // Inputs
+    RawMaterialReady : BOOL; // Indicates if raw materials are ready for loading.
+    TemperatureSensor : REAL; // Current temperature reading from the sensor.
+    PressureSensor : REAL; // Current pressure reading from the sensor.
+    EmergencyStopSignal : BOOL; // Emergency stop signal input.
+
+    // Outputs
+    LoadValveOpen : BOOL; // Control signal to open the load valve.
+    ReactionValveOpen : BOOL; // Control signal to open the reaction valve.
+    ShutdownValveOpen : BOOL; // Control signal to open the shutdown valve.
+
+    // Internal Flags
+    Step1_Complete : BOOL; // Flag indicating completion of raw material loading.
+    Step2_Complete : BOOL; // Flag indicating completion of reaction control.
+    ReactionComplete : BOOL; // Flag indicating successful completion of the reaction.
+
+    // Configurable Parameters
+    TargetTemperature : REAL := 180.0; // Target temperature for the reaction.
+    TargetPressure : REAL := 150.0; // Target pressure for the reaction.
+    LoadingDuration : TIME := T#10s; // Duration for which the load valve remains open.
+    ReactionDuration : TIME := T#30m; // Duration for which the reaction valve remains open.
+    ShutdownDelay : TIME := T#5s; // Delay before opening the shutdown valve after reaction completes.
+
+    // Timers
+    Timer_Load : TON; // Timer for loading duration.
+    Timer_Reaction : TON; // Timer for reaction duration.
+    Timer_Shutdown : TON; // Timer for shutdown delay.
 END_VAR
-// Main sequence control
-IF NOT stReactionFinished THEN
 
-    // Step 1: Load raw materials
-    IF NOT stStep1 THEN
-        stAmmoniaValveControl := TRUE;  // Control ammonia valve
-        stCO2ValveControl := TRUE;      // Control CO2 valve
-        
-        // Check valve status
-        IF stAmmoniaValve AND stCO2Valve THEN
-            stStep1 := TRUE;             // Step 1 complete
-            tReactionTimer := CURRENT_TIME;  // Record current time to start reaction timing
-        END_IF
+// Initialize timers
+Timer_Load(IN := FALSE);
+Timer_Reaction(IN := FALSE);
+Timer_Shutdown(IN := FALSE);
 
-    // Step 2: Control reaction
-    ELSIF NOT stStep2 THEN
-        // Check if current pressure and temperature are within the target range
-        IF (rCurrentPressure >= rTargetPressure - rPressureTolerance) AND (rCurrentPressure <= rTargetPressure + rPressureTolerance) AND 
-           (rCurrentTemperature >= rTargetTemperature - rTemperatureTolerance) AND (rCurrentTemperature <= rTargetTemperature + rTemperatureTolerance) THEN
-           
-            // Check if the reaction time has been reached
-            IF CURRENT_TIME >= tReactionTimer + tReactionTime THEN
-                stStep2 := TRUE;  // Step 2 complete
-            END_IF
-        
-        ELSE
-            // Adjust valves based on pressure and temperature
-            stAmmoniaValveControl := (rCurrentPressure < rTargetPressure) OR (rCurrentTemperature < rTargetTemperature);
-            stCO2ValveControl := (rCurrentPressure < rTargetPressure) OR (rCurrentTemperature < rTargetTemperature);
-        END_IF
-    END_IF
+// Emergency stop condition
+IF EmergencyStopSignal THEN
+    LoadValveOpen := FALSE;
+    ReactionValveOpen := FALSE;
+    ShutdownValveOpen := FALSE;
+    RETURN; // Exit the program
+END_IF;
 
-ELSE
-    // Close all valves, mark reaction as finished
-    stAmmoniaValveControl := FALSE;
-    stCO2ValveControl := FALSE;
-    stReactionFinished := TRUE;
-END_IF
+// Overtemperature protection
+IF TemperatureSensor > 200.0 THEN // Threshold example
+    LoadValveOpen := FALSE;
+    ReactionValveOpen := FALSE;
+    ShutdownValveOpen := FALSE;
+    RETURN; // Exit the program
+END_IF;
 
-END_PROGRAM
+// Overpressure protection
+IF PressureSensor > 170.0 THEN // Threshold example
+    LoadValveOpen := FALSE;
+    ReactionValveOpen := FALSE;
+    ShutdownValveOpen := FALSE;
+    RETURN; // Exit the program
+END_IF;
 
+// Step 1: Raw Material Loading
+IF RawMaterialReady AND NOT Step1_Complete THEN
+    Timer_Load(IN := TRUE);
+    Timer_Load(PT := LoadingDuration);
+    LoadValveOpen := TRUE;
+END_IF;
+
+IF Timer_Load.Q THEN
+    Timer_Load(IN := FALSE);
+    LoadValveOpen := FALSE;
+    Step1_Complete := TRUE;
+END_IF;
+
+// Step 2: Reaction Control
+IF Step1_Complete AND NOT Step2_Complete THEN
+    Timer_Reaction(IN := TRUE);
+    Timer_Reaction(PT := ReactionDuration);
+    ReactionValveOpen := TRUE;
+END_IF;
+
+IF Timer_Reaction.Q THEN
+    Timer_Reaction(IN := FALSE);
+    ReactionValveOpen := FALSE;
+    Step2_Complete := TRUE;
+END_IF;
+
+// Final Step: Automatic Shutdown
+IF Step2_Complete AND NOT ReactionComplete THEN
+    Timer_Shutdown(IN := TRUE);
+    Timer_Shutdown(PT := ShutdownDelay);
+END_IF;
+
+IF Timer_Shutdown.Q THEN
+    Timer_Shutdown(IN := FALSE);
+    ShutdownValveOpen := TRUE;
+    ReactionComplete := TRUE;
+END_IF;
