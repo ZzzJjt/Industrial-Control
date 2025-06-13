@@ -1,4 +1,22 @@
-**Sine Function**
+FUNCTION_BLOCK SineFunction
+VAR_INPUT
+    AngleRad : REAL; // Input angle in radians
+END_VAR
 
-Develop a self-contained function block in IEC 61131-3 Structured Text to compute the sine of a given angle in radians. Ensure that the function block is modular and reusable, with appropriate comments detailing the mathematical operations involved. Include a discussion on the precision of the sine function within the context of PLC programming and its potential limitations in real-time applications.
+VAR_OUTPUT
+    SineValue : REAL; // Computed sine of the input angle
+END_VAR
+
+METHOD Execute : BOOL
+BEGIN
+    // Use the built-in SIN() function to compute the sine of the input angle
+    SineValue := SIN(AngleRad);
+
+    RETURN TRUE;
+END_METHOD
+
+// Main execution loop
+Execute();
+
+
 
