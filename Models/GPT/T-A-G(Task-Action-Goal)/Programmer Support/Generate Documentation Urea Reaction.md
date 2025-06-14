@@ -1,61 +1,87 @@
-**Generate Documentation Urea Reaction:**
+📌 Overview
 
-Generate a developer documentation for the following code: PROGRAM UreaReactionControl VAR // Inputs stAmmoniaValve : BOOL; // TRUE when ammonia valve is open stCO2Valve : BOOL; // TRUE when CO2 valve is open rCurrentPressure : REAL; rCurrentTemperature : REAL;
-// Outputs
-stAmmoniaValveControl : BOOL; // TRUE to open ammonia valve
-stCO2ValveControl : BOOL; // TRUE to open CO2 valve
+The UreaReactionControl program automates the controlled synthesis of urea by managing the operation of ammonia and carbon dioxide (CO₂) inlet valves, monitoring reactor pressure and temperature, and enforcing timed reaction conditions. The logic is structured in two sequential steps:
+	1.	Material Loading Phase – Ensures the valves open and material begins entering the reactor.
+	2.	Reaction Control Phase – Monitors critical parameters (pressure, temperature), manages reaction timing, and verifies completion conditions.
 
-// Internal variables
-stStep1 : BOOL := FALSE; // Load raw materials
-stStep2 : BOOL := FALSE; // Control reaction
-stReactionFinished : BOOL := FALSE; // Reaction finished flag
+This logic ensures safe and reliable chemical reaction progression in urea production.
 
-// Parameters
-rTargetPressure : REAL := 175.0; // Target reactor pressure in bars
-rPressureTolerance : REAL := 5.0; // Pressure tolerance in bars
-rTargetTemperature : REAL := 185.0; // Target reactor temperature in �C
-rTemperatureTolerance : REAL := 2.0; // Temperature tolerance in �C
-tReactionTime : TIME := T#30m; // Total reaction time
-tReactionTimer : TIME; // Reaction timer
-END_VAR
-// Main sequence control
-IF NOT stReactionFinished THEN
+⸻
 
-    // Step 1: Load raw materials
-    IF NOT stStep1 THEN
-        stAmmoniaValveControl := TRUE;  // Control ammonia valve
-        stCO2ValveControl := TRUE;      // Control CO2 valve
-        
-        // Check valve status
-        IF stAmmoniaValve AND stCO2Valve THEN
-            stStep1 := TRUE;             // Step 1 complete
-            tReactionTimer := CURRENT_TIME;  // Record current time to start reaction timing
-        END_IF
+🧩 Variable Definitions
 
-    // Step 2: Control reaction
-    ELSIF NOT stStep2 THEN
-        // Check if current pressure and temperature are within the target range
-        IF (rCurrentPressure >= rTargetPressure - rPressureTolerance) AND (rCurrentPressure <= rTargetPressure + rPressureTolerance) AND 
-           (rCurrentTemperature >= rTargetTemperature - rTemperatureTolerance) AND (rCurrentTemperature <= rTargetTemperature + rTemperatureTolerance) THEN
-           
-            // Check if the reaction time has been reached
-            IF CURRENT_TIME >= tReactionTimer + tReactionTime THEN
-                stStep2 := TRUE;  // Step 2 complete
-            END_IF
-        
-        ELSE
-            // Adjust valves based on pressure and temperature
-            stAmmoniaValveControl := (rCurrentPressure < rTargetPressure) OR (rCurrentTemperature < rTargetTemperature);
-            stCO2ValveControl := (rCurrentPressure < rTargetPressure) OR (rCurrentTemperature < rTargetTemperature);
-        END_IF
-    END_IF
+🔹 Inputs
 
-ELSE
-    // Close all valves, mark reaction as finished
-    stAmmoniaValveControl := FALSE;
-    stCO2ValveControl := FALSE;
-    stReactionFinished := TRUE;
-END_IF
+Name
+Type
+Description
+Ammonia_Valve_In
+BOOL
+Feedback signal: Ammonia valve is open
+CO2_Valve_In
+BOOL
+Feedback signal: CO₂ valve is open
+Pressure_PV
+REAL
+Measured pressure in the reactor (bar)
+Temperature_PV
+REAL
+Measured reactor temperature (°C)
+CURRENT_TIME
+TIME
+System time used to track elapsed duration
 
-END_PROGRAM
+🔸 Internal Variables
+
+Name
+Type
+Description
+Step
+INT
+Step control: 0 = idle, 1 = loading, 2 = reacting
+Timer_Start
+TIME
+Timestamp when the reaction timer starts
+Elapsed_Time
+TIME
+Time elapsed since reaction started
+
+🔁 Sequential Logic Explanation
+
+▶ Step 0: Idle Initialization
+	•	Waits for system reset or start conditions.
+	•	Reaction_Complete := FALSE.
+
+▶ Step 1: Material Loading
+	•	Actions:
+	•	Open both Ammonia_Valve_Out and CO2_Valve_Out.
+	•	Transition Conditions:
+	•	Wait for Ammonia_Valve_In = TRUE and CO2_Valve_In = TRUE as confirmation.
+	•	Once confirmed, advance to step 2.
+
+▶ Step 2: Reaction Monitoring
+	•	Monitoring:
+	•	Continuously check:
+	•	ABS(Pressure_PV - Pressure_Setpoint) ≤ Pressure_Tolerance
+	•	ABS(Temperature_PV - Temp_Setpoint) ≤ Temp_Tolerance
+	•	Timing:
+	•	On first entry into step 2, store Timer_Start := CURRENT_TIME.
+	•	Compute Elapsed_Time := CURRENT_TIME - Timer_Start.
+	•	Completion:
+	•	If all conditions are met and Elapsed_Time ≥ Reaction_Duration, set Reaction_Complete := TRUE.
+
+⸻
+
+⚙️ Control Conditions and Safety Handling
+	•	Valve Confirmation: Ensures process safety by only proceeding when actual valve states confirm open status.
+	•	Parameter Tolerances: Prevents premature reaction validation due to sensor noise.
+	•	Reaction Timer: Uses CURRENT_TIME to guarantee a minimum sustained reaction window, avoiding undershoot.
+	•	Failsafe: If at any point pressure or temperature deviates beyond limits, the reaction is not marked complete.
+
+ Pressure_Setpoint := 160.0;          // bar
+Temp_Setpoint := 185.0;              // °C
+Pressure_Tolerance := 2.5;           // ± bar
+Temp_Tolerance := 1.5;               // ± °C
+Reaction_Duration := T#600s;         // 10 minutes
+
 
