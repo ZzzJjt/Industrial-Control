@@ -1,7 +1,47 @@
-**Interlock Safety Doors:**
+FUNCTION_BLOCK FB_SafetyDoorInterlock
+VAR_INPUT
+    DOOR_1_CLOSED : BOOL;
+    DOOR_2_CLOSED : BOOL;
+    DOOR_3_CLOSED : BOOL;
+    ReactorStartRequest : BOOL; // Command to start reactor
+    ManualReset : BOOL;         // Reset button (rising edge)
+END_VAR
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement interlocks for safety doors in a chemical reactor. The program should monitor the status of the safety doors and ensure that the reactor remains in a safe state whenever any door is open.
+VAR_OUTPUT
+    ALLOW_START : BOOL;         // TRUE when all doors closed and ready
+    EMERGENCY_SHUTDOWN : BOOL;  // Triggers emergency stop
+    ReactorRunning : BOOL;      // Status of reactor
+END_VAR
 
-The interlock logic should prevent the reactor from starting or continuing operation if any safety door is not securely closed. Additionally, if a safety door is opened during reactor operation, the program should immediately trigger an emergency shutdown sequence, including deactivating the reactor and stopping any hazardous processes.
+VAR
+    AllDoorsClosed : BOOL;
+    ResetLatch : BOOL := TRUE;
+    PrevManualReset : BOOL := FALSE;
+    RisingEdgeReset : BOOL;
+END_VAR
 
-This interlock ensures that the reactor only operates when all safety doors are securely closed, providing an essential safeguard against accidental exposure to hazardous conditions. Discuss the importance of safety door interlocks in preventing operator access to dangerous environments and ensuring compliance with safety standards in chemical processing.
+// Determine door status
+AllDoorsClosed := DOOR_1_CLOSED AND DOOR_2_CLOSED AND DOOR_3_CLOSED;
+ALLOW_START := AllDoorsClosed AND ResetLatch;
+
+// Detect rising edge on ManualReset
+RisingEdgeReset := ManualReset AND NOT PrevManualReset;
+PrevManualReset := ManualReset;
+
+// Emergency interlock logic
+IF ReactorRunning AND NOT AllDoorsClosed THEN
+    EMERGENCY_SHUTDOWN := TRUE;
+    ReactorRunning := FALSE;
+    ResetLatch := FALSE;
+END_IF
+
+// Normal startup logic
+IF ALLOW_START AND ReactorStartRequest THEN
+    ReactorRunning := TRUE;
+END_IF
+
+// Manual reset logic: Only allowed if all doors are closed
+IF RisingEdgeReset AND AllDoorsClosed THEN
+    EMERGENCY_SHUTDOWN := FALSE;
+    ResetLatch := TRUE;
+END_IF
