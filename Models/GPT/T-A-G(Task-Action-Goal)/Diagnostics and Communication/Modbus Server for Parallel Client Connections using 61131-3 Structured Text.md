@@ -1,16 +1,101 @@
-**Modbus Server for Parallel Client Connections using 61131-3 Structured Text:**
+FUNCTION_BLOCK FB_ModbusTCP_Server
+VAR_INPUT
+    Enable       : BOOL;
+    ClientData   : ARRAY[1..10] OF ModbusRequest; // Custom request type per client
+END_VAR
 
-Develop a self-contained 61131-3 structured text function block to implement a Modbus server capable of handling up to 10 parallel client connection requests over Modbus TCP. The server should manage Modbus requests within data ranges that map input and holding registers. The following Modbus function codes must be supported:
+VAR_OUTPUT
+    ResponseData : ARRAY[1..10] OF ModbusResponse;
+    Status       : ARRAY[1..10] OF INT;
+END_VAR
 
-	•	0x01: Read Coils
-	•	0x02: Read Discrete Inputs
-	•	0x03: Read Holding Registers
-	•	0x04: Read Input Registers
-	•	0x05: Write Single Coil
-	•	0x06: Write Single Register
-	•	0x0F: Write Multiple Coils
-	•	0x10: Write Multiple Registers
-	•	0x17: Read/Write Multiple Registers
+VAR
+    CoilBuffer         : ARRAY[0..511] OF BOOL;
+    HoldingRegisters   : ARRAY[0..255] OF WORD;
+    InputRegisters     : ARRAY[0..255] OF WORD;
+    DiscreteInputs     : ARRAY[0..255] OF BOOL;
+    i, j               : INT;
+    byteVal            : BYTE;
+    tempWord           : WORD;
+    fc                 : BYTE;
+    addr, quantity     : INT;
+END_VAR
 
-In addition, describe the ReadCoils method, explaining how it processes client requests, maps coil data, and manages communication over TCP/IP.
+FOR i := 1 TO 10 DO
+    IF Enable AND ClientData[i].Connected THEN
+        fc := ClientData[i].FunctionCode;
+        addr := ClientData[i].Address;
+        quantity := ClientData[i].Quantity;
 
+        CASE fc OF
+
+            1: // Read Coils
+                ResponseData[i].ByteCount := (quantity + 7) / 8;
+                FOR j := 0 TO quantity - 1 DO
+                    IF CoilBuffer[addr + j] THEN
+                        ResponseData[i].Data[j / 8] := ResponseData[i].Data[j / 8] OR SHL(1, j MOD 8);
+                    END_IF
+                END_FOR
+                Status[i] := 0;
+
+            2: // Read Discrete Inputs
+                ResponseData[i].ByteCount := (quantity + 7) / 8;
+                FOR j := 0 TO quantity - 1 DO
+                    IF DiscreteInputs[addr + j] THEN
+                        ResponseData[i].Data[j / 8] := ResponseData[i].Data[j / 8] OR SHL(1, j MOD 8);
+                    END_IF
+                END_FOR
+                Status[i] := 0;
+
+            3: // Read Holding Registers
+                FOR j := 0 TO quantity - 1 DO
+                    ResponseData[i].Data[j] := HoldingRegisters[addr + j];
+                END_FOR
+                Status[i] := 0;
+
+            4: // Read Input Registers
+                FOR j := 0 TO quantity - 1 DO
+                    ResponseData[i].Data[j] := InputRegisters[addr + j];
+                END_FOR
+                Status[i] := 0;
+
+            5: // Write Single Coil
+                CoilBuffer[addr] := ClientData[i].WriteValue = 16#FF00;
+                Status[i] := 0;
+
+            6: // Write Single Register
+                HoldingRegisters[addr] := ClientData[i].WriteValue;
+                Status[i] := 0;
+
+            15: // Write Multiple Coils
+                FOR j := 0 TO quantity - 1 DO
+                    byteVal := ClientData[i].Data[j / 8];
+                    CoilBuffer[addr + j] := (byteVal AND SHL(1, j MOD 8)) <> 0;
+                END_FOR
+                Status[i] := 0;
+
+            16: // Write Multiple Registers
+                FOR j := 0 TO quantity - 1 DO
+                    HoldingRegisters[addr + j] := ClientData[i].Data[j];
+                END_FOR
+                Status[i] := 0;
+
+            23: // Read/Write Multiple Registers
+                // First write phase
+                FOR j := 0 TO ClientData[i].WriteQuantity - 1 DO
+                    HoldingRegisters[ClientData[i].WriteAddress + j] := ClientData[i].WriteData[j];
+                END_FOR
+                // Then read response
+                FOR j := 0 TO quantity - 1 DO
+                    ResponseData[i].Data[j] := HoldingRegisters[addr + j];
+                END_FOR
+                Status[i] := 0;
+
+            ELSE
+                Status[i] := -1; // Unsupported function code
+        END_CASE
+
+    ELSE
+        Status[i] := -2; // Client not connected or server not enabled
+    END_IF
+END_FOR
