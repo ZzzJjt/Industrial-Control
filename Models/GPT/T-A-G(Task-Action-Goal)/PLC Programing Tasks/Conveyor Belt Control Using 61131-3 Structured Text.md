@@ -1,6 +1,43 @@
-**Conveyor Belt Control Using 61131-3 Structured Text:**
+// Conveyor Belt Control Program (IEC 61131-3 Structured Text)
 
-Write a self-contained 61131-3 structured text program (not a function block) to control a conveyor belt system with three stations, where each station allows a user to stop the conveyor. The system should automatically start and stop based on input from five sensors that detect the presence of objects on the conveyor. The conveyor belt speed must be maintained at 2 meters per second. The program should manage both manual and automatic control modes while ensuring safe and efficient operation.
+VAR
+    // Input Signals
+    StationStop1    : BOOL; // Manual stop station 1
+    StationStop2    : BOOL; // Manual stop station 2
+    StationStop3    : BOOL; // Manual stop station 3
 
-Implement logic that prioritizes safety by ensuring the conveyor stops if any station triggers a stop command or if an object is not detected by the sensors.
+    Sensor1         : BOOL; // Object detection sensor 1
+    Sensor2         : BOOL; // Object detection sensor 2
+    Sensor3         : BOOL; // Object detection sensor 3
+    Sensor4         : BOOL; // Object detection sensor 4
+    Sensor5         : BOOL; // Object detection sensor 5
 
+    AutoMode        : BOOL; // Automatic mode selected
+    ManualMode      : BOOL; // Manual mode selected
+
+    // Output Signals
+    ConveyorRunning : BOOL; // Controls motor ON/OFF
+    ConveyorSpeed   : REAL := 2.0; // Logical constant speed
+END_VAR
+
+
+// --- Safety Priority Logic: Emergency Stop Always Wins ---
+IF StationStop1 OR StationStop2 OR StationStop3 THEN
+    ConveyorRunning := FALSE;
+
+// --- Automatic Mode: Run only if all 5 sensors detect presence ---
+ELSIF AutoMode THEN
+    IF Sensor1 AND Sensor2 AND Sensor3 AND Sensor4 AND Sensor5 THEN
+        ConveyorRunning := TRUE;
+    ELSE
+        ConveyorRunning := FALSE;
+    END_IF
+
+// --- Manual Mode: Run unless manually stopped ---
+ELSIF ManualMode THEN
+    ConveyorRunning := TRUE;
+
+// --- No Valid Mode Selected: Default to safe stop ---
+ELSE
+    ConveyorRunning := FALSE;
+END_IF
