@@ -1,3 +1,71 @@
-**EtherCAT State Machine Control Using IEC 61131-3 Structured Text:**
+PROGRAM EtherCAT_ESM_Control
+VAR
+    CurrentState     : STRING[10] := 'INIT';
+    NextState        : STRING[10];
+    TransitionTimer  : TON;
+    TimerStart       : BOOL := FALSE;
+    TimerElapsed     : BOOL;
+    ErrorFlag        : BOOL := FALSE;
+    ErrorMessage     : STRING[80];
+END_VAR
 
-Develop an IEC 61131-3 structured text (ST) program to sequentially transition through all the states of an EtherCAT slave device using the ESM (EtherCAT State Machine) function block. The program should use descriptive state names (such as INIT, PREOP, SAFEOP, OP, etc.) rather than numerical values, ensuring that state transitions occur only when allowed. A 5-second timer delay should be implemented before each state transition to ensure proper timing and stabilization. Discuss the implementation of the EtherCAT state machine, including logic for handling state transitions, error checking, and ensuring compliance with EtherCAT protocol requirements.
+(* Timer configuration *)
+TransitionTimer(IN := TimerStart, PT := T#5s);
+TimerElapsed := TransitionTimer.Q;
+
+(* State transition logic *)
+CASE CurrentState OF
+
+    'INIT':
+        NextState := 'PREOP';
+        TimerStart := TRUE;
+        IF TimerElapsed THEN
+            CurrentState := NextState;
+            TimerStart := FALSE;
+        END_IF
+
+    'PREOP':
+        IF CheckState('PREOP') THEN
+            NextState := 'SAFEOP';
+            TimerStart := TRUE;
+            IF TimerElapsed THEN
+                CurrentState := NextState;
+                TimerStart := FALSE;
+            END_IF
+        ELSE
+            ErrorFlag := TRUE;
+            ErrorMessage := 'Transition to SAFEOP blocked - invalid PREOP condition';
+        END_IF
+
+    'SAFEOP':
+        IF CheckState('SAFEOP') THEN
+            NextState := 'OP';
+            TimerStart := TRUE;
+            IF TimerElapsed THEN
+                CurrentState := NextState;
+                TimerStart := FALSE;
+            END_IF
+        ELSE
+            ErrorFlag := TRUE;
+            ErrorMessage := 'Transition to OP blocked - invalid SAFEOP condition';
+        END_IF
+
+    'OP':
+        IF NOT CheckState('OP') THEN
+            ErrorFlag := TRUE;
+            ErrorMessage := 'OP state lost unexpectedly';
+        END_IF
+
+    ELSE
+        ErrorFlag := TRUE;
+        ErrorMessage := 'Unknown EtherCAT state';
+
+END_CASE
+
+(* Dummy state validation function *)
+FUNCTION CheckState : BOOL
+VAR_INPUT
+    StateName : STRING;
+END_VAR
+(* Simulated success for all valid transitions *)
+CheckState := (StateName = 'PREOP') OR (StateName = 'SAFEOP') OR (StateName = 'OP');
