@@ -36,3 +36,27 @@ Use
 Example
 IF, THEN, ELSIF, ELSE, END_IF
 Conditional logic
+
+📂 3. Function and Function Block Calls
+
+🔹 Timers and Counters
+Block
+Description
+Example
+TON
+On-delay timer
+TOF
+Off-delay timer
+TP
+Pulse timer
+CTU
+Count up
+CTD
+Count down
+CTUD
+Count up/down
+
+TON1(IN := Start, PT := T#5s);
+IF TON1.Q THEN
+    Valve := TRUE;
+END_IF;
