@@ -1,8 +1,141 @@
-**3D Pouch Making Machine:**
+VAR
+    // Operator commands
+    Start_Sequence : BOOL;
+    Shutdown_Sequence : BOOL;
 
-Design a detailed start-up and shutdown sequence for a 3D pouch making machine in IEC 61131-3 Structured Text. The machine consists of 8 heating stations, 8 cooling stations, one horizontal cutter, one vertical cutter, and two feeder units responsible for raw material feeding. Winding tension management is critical throughout the process to ensure proper tension in the raw material.
+    // Component outputs
+    Heater[1..8] : BOOL;
+    Cooler[1..8] : BOOL;
+    Feeder_A_Enabled : BOOL;
+    Feeder_B_Enabled : BOOL;
+    Cutter_Horizontal : BOOL;
+    Cutter_Vertical : BOOL;
 
-Write a structured start-up sequence that sequentially activates the heating and cooling stations, regulates the feeder units to maintain optimal tension, and ensures proper synchronization between the cutters and material flow. Additionally, create a shutdown sequence that safely deactivates each component in the correct order, ensuring proper cooling and tension release.
+    // Control
+    SequenceStep : INT := 0;
+    SeqTimer : TON;
+    TimerStart : BOOL;
 
-Ensure the program includes typical parameter values, timers, and conditions for each stage of the start-up and shutdown procedures, and discuss the importance of winding tension in maintaining machine efficiency and product quality.
+    // Parameters
+    HeatUpTime : TIME := T#5s;
+    CoolDownTime : TIME := T#3s;
+    FeedDelay : TIME := T#2s;
+    CutterSyncDelay : TIME := T#1s;
+END_VAR
 
+// Control timer triggering
+SeqTimer(IN := TimerStart, PT := HeatUpTime);
+
+// START-UP SEQUENCE
+IF Start_Sequence AND NOT Shutdown_Sequence THEN
+    CASE SequenceStep OF
+        0: // Start heaters
+            Heater[1] := TRUE;
+            TimerStart := TRUE;
+            IF SeqTimer.Q THEN
+                TimerStart := FALSE;
+                SeqTimer(IN := FALSE);
+                SequenceStep := 1;
+            END_IF
+
+        1..7: // Continue heating sequence
+            Heater[SequenceStep + 1] := TRUE;
+            TimerStart := TRUE;
+            IF SeqTimer.Q THEN
+                TimerStart := FALSE;
+                SeqTimer(IN := FALSE);
+                SequenceStep := SequenceStep + 1;
+            END_IF
+
+        8: // All heaters done – now start cooling
+            Cooler[1] := TRUE;
+            TimerStart := TRUE;
+            SeqTimer(PT := CoolDownTime);
+            IF SeqTimer.Q THEN
+                TimerStart := FALSE;
+                SeqTimer(IN := FALSE);
+                SequenceStep := 9;
+            END_IF
+
+        9..15:
+            Cooler[SequenceStep - 7] := TRUE;
+            TimerStart := TRUE;
+            IF SeqTimer.Q THEN
+                TimerStart := FALSE;
+                SeqTimer(IN := FALSE);
+                SequenceStep := SequenceStep + 1;
+            END_IF
+
+        16: // Enable feeders
+            TimerStart := TRUE;
+            SeqTimer(PT := FeedDelay);
+            IF SeqTimer.Q THEN
+                Feeder_A_Enabled := TRUE;
+                Feeder_B_Enabled := TRUE;
+                TimerStart := FALSE;
+                SeqTimer(IN := FALSE);
+                SequenceStep := 17;
+            END_IF
+
+        17: // Synchronize cutters
+            TimerStart := TRUE;
+            SeqTimer(PT := CutterSyncDelay);
+            IF SeqTimer.Q THEN
+                Cutter_Horizontal := TRUE;
+                Cutter_Vertical := TRUE;
+                TimerStart := FALSE;
+                SeqTimer(IN := FALSE);
+                SequenceStep := 100; // Ready
+            END_IF
+
+        100: // MACHINE FULLY STARTED
+            ; // Idle in final state
+    END_CASE
+
+// SHUTDOWN SEQUENCE
+ELSIF Shutdown_Sequence THEN
+    CASE SequenceStep OF
+        100: // Cutters off
+            Cutter_Horizontal := FALSE;
+            Cutter_Vertical := FALSE;
+            TimerStart := TRUE;
+            SeqTimer(PT := CutterSyncDelay);
+            IF SeqTimer.Q THEN
+                TimerStart := FALSE;
+                SeqTimer(IN := FALSE);
+                SequenceStep := 101;
+            END_IF
+
+        101: // Feeders off
+            Feeder_A_Enabled := FALSE;
+            Feeder_B_Enabled := FALSE;
+            TimerStart := TRUE;
+            SeqTimer(PT := FeedDelay);
+            IF SeqTimer.Q THEN
+                TimerStart := FALSE;
+                SeqTimer(IN := FALSE);
+                SequenceStep := 102;
+            END_IF
+
+        102..108: // Coolers off in reverse
+            Cooler[109 - SequenceStep] := FALSE;
+            TimerStart := TRUE;
+            IF SeqTimer.Q THEN
+                TimerStart := FALSE;
+                SeqTimer(IN := FALSE);
+                SequenceStep := SequenceStep + 1;
+            END_IF
+
+        109..116: // Heaters off in reverse
+            Heater[117 - SequenceStep] := FALSE;
+            TimerStart := TRUE;
+            IF SeqTimer.Q THEN
+                TimerStart := FALSE;
+                SeqTimer(IN := FALSE);
+                SequenceStep := SequenceStep + 1;
+            END_IF
+
+        117: // Shutdown complete
+            SequenceStep := 0;
+    END_CASE
+END_IF
