@@ -1,7 +1,67 @@
-**Model Predictive Control for Continuous Cellulose Fiber Production Using Python:**
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.linalg import solve_discrete_are
 
-Explain how model predictive control (MPC) can optimize cellulose fiber production from wood, where continuous infeed and outfeed operations are required, while the material undergoes a two-stage batch process. The material is supplied at an average rate of 50 tons per hour, undergoing pre-treatment in a reactor followed by homogenization before entering a 1,000 cubic meter buffer tank. The product is extracted from the tank on demand, not at a constant rate. To minimize downtime in downstream processes, a high fill level in the tank must be maintained, despite the two-hour delay caused by upstream batch processes, making PID control unsuitable.
+# Simulation parameters
+sim_time = 100  # in hours
+delay = 2       # batch delay in hours
+buffer_capacity = 1000  # max buffer level
 
-Develop Python code to simulate the system dynamics, including the dead time and fluctuating demand.
+# System dynamics: Buffer level depends on infeed - outfeed
+# x[k+1] = x[k] + infeed[k-delay] - outfeed[k]
+# We'll simulate this with shifted arrays
 
-Implement Python code for a model predictive control (MPC) algorithm to optimize material flow, taking into account the time delay, fluctuating demand, and operational constraints.
+# Generate random demand (outfeed)
+outfeed = 50 + 20 * np.sin(np.linspace(0, 10, sim_time)) + np.random.randn(sim_time) * 5
+outfeed = np.clip(outfeed, 30, 70)
+
+# Desired buffer level
+target_buffer = 800
+
+# Initialize variables
+buffer = np.zeros(sim_time)
+infeed = np.zeros(sim_time)
+delayed_infeed = np.zeros(sim_time)
+
+# Define MPC parameters
+Q = 1.0  # Weight on buffer level error
+R = 0.1  # Weight on infeed change
+A = 1
+B = 1
+N = 10  # Prediction horizon
+
+# Solve discrete-time Riccati equation for LQR gain as simple MPC approximation
+P = solve_discrete_are(A, B, Q, R)
+K = -np.linalg.inv(R + B.T @ P @ B) @ B.T @ P @ A
+
+# Main simulation loop
+for k in range(sim_time - 1):
+    # Compute error from target
+    error = buffer[k] - target_buffer
+
+    # MPC-like control law
+    u = float(K * error)
+    infeed[k] = np.clip(u + outfeed[k], 0, 100)  # anticipate demand
+
+    # Implement delay logic
+    if k >= delay:
+        delayed_infeed[k] = infeed[k - delay]
+    else:
+        delayed_infeed[k] = 0
+
+    # Update buffer level
+    buffer[k + 1] = buffer[k] + delayed_infeed[k] - outfeed[k]
+    buffer[k + 1] = np.clip(buffer[k + 1], 0, buffer_capacity)
+
+# Plot results
+plt.figure(figsize=(12, 6))
+plt.plot(buffer, label='Buffer Level')
+plt.axhline(target_buffer, color='gray', linestyle='--', label='Target Level')
+plt.plot(infeed, label='Infeed Rate')
+plt.plot(outfeed, label='Outfeed Rate')
+plt.title('MPC Control of Cellulose Buffer Tank')
+plt.xlabel('Time (hours)')
+plt.ylabel('Units')
+plt.legend()
+plt.grid(True)
+plt.show()
