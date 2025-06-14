@@ -1,5 +1,48 @@
-**Interlock Overfill Protection:**
+(* Overfill Protection Interlock for Process Vessel *)
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement an interlock system for overfill protection of a vessel. The program should utilize a level sensor to monitor the liquid level in the vessel and control an inlet valve to prevent overfilling.
+FUNCTION_BLOCK FB_OverfillProtection
+VAR_INPUT
+LevelSensor       : REAL;   // Vessel level in %
+SensorValid       : BOOL;   // TRUE if level sensor signal is valid
+ValveOK           : BOOL;   // TRUE if valve actuator is working properly
+ManualReset       : BOOL;   // Operator manual reset trigger
+END_VAR
 
-The logic should ensure that the inlet valve automatically closes when the level sensor detects that the liquid has reached a predefined high-level setpoint. The interlock should remain engaged until the level drops below a safe threshold. Additionally, include a fail-safe mechanism to handle sensor failure or valve malfunction, ensuring the system defaults to a safe state. Discuss the importance of interlocks in industrial process safety and the role of overfill protection in preventing hazardous conditions.
+VAR_OUTPUT
+INLET_VALVE       : BOOL;   // TRUE = open, FALSE = closed
+Alarm_Overfill    : BOOL;   // TRUE if overfill condition is latched
+Alarm_SensorFail  : BOOL;   // TRUE if sensor signal invalid
+Alarm_ValveFail   : BOOL;   // TRUE if valve is faulty
+END_VAR
+
+VAR
+ShutdownLatched   : BOOL := FALSE;
+H_Level           : REAL := 90.0;  // High level shutdown threshold
+R_Level           : REAL := 85.0;  // Reset level threshold
+END_VAR
+
+// Evaluate fault conditions
+Alarm_SensorFail := NOT SensorValid;
+Alarm_ValveFail := NOT ValveOK;
+
+// Latching logic for shutdown
+IF SensorValid AND (LevelSensor >= H_Level) THEN
+ShutdownLatched := TRUE;
+END_IF
+
+// Allow reset if level is safe and manual reset is triggered
+IF (LevelSensor < R_Level) AND ManualReset THEN
+ShutdownLatched := FALSE;
+END_IF
+
+// Apply interlock logic
+IF ShutdownLatched OR Alarm_SensorFail OR Alarm_ValveFail THEN
+INLET_VALVE := FALSE;  // Force valve closed
+ELSE
+INLET_VALVE := TRUE;   // Allow valve to open under normal condition
+END_IF
+
+// Raise alarm if shutdown is active
+Alarm_Overfill := ShutdownLatched;
+
+END_FUNCTION_BLOCK
