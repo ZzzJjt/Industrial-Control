@@ -1,22 +1,104 @@
-**Pick-and-Place Application for a Robot Using 61131-3 Structured Text:**
+VAR
+    // Mode control inputs
+    BtnManual       : BOOL;
+    BtnAuto         : BOOL;
 
-Write a PLC program in structured text (ST) according to IEC 61131-3 standards for a pick-and-place robotic application with two conveyors, following the process described below:
+    // Manual command inputs
+    CmdClip         : BOOL;
+    CmdTransfer     : BOOL;
+    CmdRelease      : BOOL;
 
-Process Description:
+    // Mode flags
+    ManualMode      : BOOL := FALSE;
+    AutoMode        : BOOL := FALSE;
 
-The system operates in two modes: Manual Mode and Auto Mode. These modes are interlocked, meaning only one can be active at any time.
+    // Auto mode trigger and state
+    AutoTrigger     : BOOL := FALSE;
+    State           : INT := 0;
 
-	1.	Manual Mode:
-	•	When the Manual button is pressed, the robotic arm will execute the following steps in response to individual manual commands:
-	•	Clip: Clip the product from conveyor A.
-	•	Transfer: Move the product to conveyor B.
-	•	Release: Release the product onto conveyor B, allowing it to be carried away.
-	2.	Auto Mode:
-	•	When the Auto button is pressed, the robotic arm will execute the entire pick-and-place process automatically:
-	•	Clip: Clip the product from conveyor A and hold it.
-	•	Transfer: Transfer the product to conveyor B (this action takes 2 seconds).
-	•	Release: Release the product onto conveyor B.
-	•	The auto process completes after one cycle, but can be re-triggered by pressing the Auto button again.
+    // Timer for Auto Mode delay
+    AutoTimer       : TON;
 
-The system should ensure that manual and auto modes cannot operate simultaneously, using interlocking logic to prevent conflicts between the two modes.
+    // Outputs to actuators
+    ActClip         : BOOL := FALSE;
+    ActTransfer     : BOOL := FALSE;
+    ActRelease      : BOOL := FALSE;
+END_VAR
 
+//------------------------//
+// Interlock Mode Logic   //
+//------------------------//
+IF BtnManual THEN
+    ManualMode := TRUE;
+    AutoMode := FALSE;
+ELSIF BtnAuto THEN
+    AutoMode := TRUE;
+    ManualMode := FALSE;
+END_IF
+
+//-----------------------------------//
+// Manual Mode – Direct Command Logic //
+//-----------------------------------//
+IF ManualMode THEN
+    IF CmdClip THEN
+        ActClip := TRUE;
+    ELSE
+        ActClip := FALSE;
+    END_IF;
+
+    IF CmdTransfer THEN
+        ActTransfer := TRUE;
+    ELSE
+        ActTransfer := FALSE;
+    END_IF;
+
+    IF CmdRelease THEN
+        ActRelease := TRUE;
+    ELSE
+        ActRelease := FALSE;
+    END_IF;
+END_IF
+
+//-------------------------------------//
+// Auto Mode – Full Sequence Logic     //
+//-------------------------------------//
+
+// Trigger only once per BtnAuto press (rising edge logic can be added externally if needed)
+IF AutoMode AND BtnAuto THEN
+    AutoTrigger := TRUE;
+END_IF
+
+IF AutoMode AND AutoTrigger THEN
+    CASE State OF
+        0: // Start – Clip
+            ActClip := TRUE;
+            ActTransfer := FALSE;
+            ActRelease := FALSE;
+            State := 1;
+        
+        1: // Start Timer after Clip
+            ActClip := FALSE;
+            AutoTimer(IN := TRUE, PT := T#2s);
+            IF AutoTimer.Q THEN
+                AutoTimer(IN := FALSE);
+                State := 2;
+            END_IF;
+
+        2: // Release
+            ActRelease := TRUE;
+            ActTransfer := FALSE;
+            State := 3;
+
+        3: // Reset
+            ActRelease := FALSE;
+            AutoTrigger := FALSE;
+            State := 0;
+    END_CASE;
+ELSE
+    // Default deactivation if not in auto sequence
+    IF NOT ManualMode THEN
+        ActClip := FALSE;
+        ActTransfer := FALSE;
+        ActRelease := FALSE;
+    END_IF
+END_IF
