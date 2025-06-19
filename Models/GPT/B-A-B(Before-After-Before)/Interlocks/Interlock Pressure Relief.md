@@ -1,7 +1,44 @@
-**Interlock Pressure Relief:**
+FUNCTION_BLOCK FB_PressureReliefProtection
+VAR_INPUT
+    PT_101        : REAL;     // Pressure transmitter reading (bar)
+    HIGH_LIMIT    : REAL;     // High pressure threshold (e.g., 15 bar)
+    RESET_LIMIT   : REAL;     // Reset threshold (e.g., 12 bar)
+    SensorFault   : BOOL;     // TRUE if pressure sensor is faulty
+    ValveFault    : BOOL;     // TRUE if relief valve is faulty
+END_VAR
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement an interlock system for opening a pressure relief valve in a vessel upon detecting overpressure. The program should monitor the vessel pressure using a pressure sensor and trigger the opening of the relief valve when the pressure exceeds a predefined safe limit.
+VAR_OUTPUT
+    RELIEF_VALVE  : BOOL;     // TRUE = valve open
+    RELIEF_LATCH  : BOOL;     // Indicates latch condition (overpressure)
+    AlarmHigh     : BOOL;     // Alarm for high pressure
+    AlarmSensor   : BOOL;     // Alarm for sensor fault
+    AlarmValve    : BOOL;     // Alarm for valve fault
+END_VAR
 
-The logic should ensure that the pressure relief valve remains open until the vessel pressure drops below a safe threshold. Additionally, incorporate safety checks to account for sensor failures or valve malfunctions, ensuring that the system defaults to a safe state in the event of a fault. Discuss the significance of pressure relief systems in protecting industrial processes from overpressure hazards and ensuring operational safety.
+VAR
+    FailSafe      : BOOL := FALSE; // Internal fail-safe trigger
+END_VAR
 
+// --- Set alarms ---
+AlarmHigh   := PT_101 >= HIGH_LIMIT;
+AlarmSensor := SensorFault;
+AlarmValve  := ValveFault;
 
+// --- Overpressure logic with latching behavior ---
+IF PT_101 >= HIGH_LIMIT THEN
+    RELIEF_LATCH := TRUE;
+END_IF;
+
+IF RELIEF_LATCH AND (PT_101 < RESET_LIMIT) THEN
+    RELIEF_LATCH := FALSE;
+END_IF;
+
+// --- Fail-safe trigger if sensor or valve is faulty ---
+FailSafe := SensorFault OR ValveFault;
+
+// --- Final control decision ---
+IF RELIEF_LATCH OR FailSafe THEN
+    RELIEF_VALVE := TRUE;  // Open valve to relieve pressure
+ELSE
+    RELIEF_VALVE := FALSE; // Normal operation
+END_IF;

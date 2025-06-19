@@ -1,6 +1,41 @@
-**Empty Bottle Removal for Packaging Line Using 61131-3 Structured Text:**
+PROGRAM BottleRemovalSystem
+VAR_INPUT
+    BottlePresentSensor : BOOL; // Detects any bottle on the conveyor
+    EmptyBottleSensor : BOOL; // Determines if the detected bottle is empty
+END_VAR
 
-Write a self-contained 61131-3 structured text (ST) program to automate the removal of empty bottles in a packaging line. After bottles are filled, they are transported by a conveyor toward the packaging station. The system includes two proximity sensors: one detects the presence of any bottle, and the second detects only empty bottles. When an empty bottle is detected, a pneumatic cylinder is activated to remove the empty bottle from the conveyor before it reaches the packaging area.
+VAR_OUTPUT
+    ConveyorMotor : BOOL := TRUE; // Controls the conveyor motor
+    EjectCylinder : BOOL; // Controls the pneumatic ejection cylinder
+END_VAR
 
-Ensure that the program controls the conveyor and cylinder operations efficiently, preventing any empty bottles from continuing to the packaging process, while maintaining smooth operation for filled bottles.
+VAR
+    EjectTimer : TON; // Timer for ejection duration
+END_VAR
+
+// Conveyor runs continuously
+ConveyorMotor := TRUE;
+
+// Empty bottle detection and ejection logic
+IF BottlePresentSensor AND EmptyBottleSensor THEN
+    // Start the ejection timer
+    EjectTimer(IN := TRUE, PT := T#500ms);
+    EjectCylinder := TRUE;
+ELSE
+    // Stop the ejection timer
+    EjectTimer(IN := FALSE);
+    IF NOT EjectTimer.Q THEN
+        EjectCylinder := FALSE;
+    END_IF;
+END_IF;
+
+// Additional comments for clarity
+// - The conveyor motor runs continuously to transport bottles toward the packaging station.
+// - When both BottlePresentSensor and EmptyBottleSensor are TRUE (indicating an empty bottle),
+//   the EjectCylinder is activated using a TON timer with a duration of 500 ms.
+// - After the timer finishes, the EjectCylinder is deactivated to retract it.
+// - This ensures that empty bottles are removed before they reach the packaging zone,
+//   while filled bottles pass through the system without interruption.
+
+
 

@@ -1,14 +1,115 @@
-**Translate ST To Instruction List:**
+// Instruction List (IL) translation of Structured Text program: PickAndPlace
 
-Translate the following 61131-3 Structured Text program to 61131-3 Instruction List: PROGRAM PickAndPlace VAR ManualButton : BOOL; // Input signal for manual mode AutoButton : BOOL; // Input signal for auto mode ClipButton : BOOL; // Input signal for clip action TransferButton : BOOL; // Input signal for transfer action ReleaseButton : BOOL; // Input signal for release action ConveyorA : BOOL; // Input signal for presence of product on conveyor A ConveyorB : BOOL; // Output signal to control conveyor B RoboticArm : BOOL; // Output signal to control the robotic arm Mode : INT := 0; // Internal variable to store the current mode (0 = manual, 1 = auto) AutoProcess : BOOL := FALSE; // Internal variable to store whether the auto control process is currently running END_VAR
+// Variable declarations:
+// BOOL: StartButton, StopButton, ManualMode, AutoMode
+// INT: Mode (0 = Manual, 1 = Auto)
+// BOOL: ArmUp, ArmDown, GripperOpen, GripperClose, ConveyorRun
+// TIMER: T1 (for WAIT behavior simulation)
 
-// Manual mode control process IF ManualButton THEN Mode := 0; // Set mode to manual END_IF
+// Initialize Mode switching
+LD      ManualMode
+JMPC    MANUAL_MODE
+LD      AutoMode
+JMPC    AUTO_MODE
+JMP     END_MODE
 
-IF Mode = 0 THEN // Manual mode IF ClipButton AND ConveyorA THEN RoboticArm := TRUE; // Clip the product ELSIF TransferButton THEN ConveyorB := TRUE; // Transfer the product to conveyor B ELSIF ReleaseButton THEN ConveyorB := FALSE; // Release the product from conveyor B END_IF END_IF
+MANUAL_MODE:
+LD      TRUE
+ST      Mode
+JMP     END_MODE
 
-// Auto mode control process IF AutoButton THEN Mode := 1; // Set mode to auto END_IF
+AUTO_MODE:
+LD      TRUE
+ST      Mode
+// Mode = 1
 
-IF Mode = 1 THEN // Auto mode IF NOT AutoProcess AND ConveyorA THEN // Only start the process if not currently running and there is a product on conveyor A AutoProcess := TRUE; // Set flag to indicate that the auto process is running RoboticArm := TRUE; // Clip the product WAIT 2; // Wait for 2 seconds to transfer the product ConveyorB := TRUE; // Transfer the product to conveyor B END_IF IF ConveyorB AND NOT ConveyorA THEN // Release the product from conveyor B once it has been transferred and there is no product on conveyor A ConveyorB := FALSE; AutoProcess := FALSE; // Clear the flag to indicate that the auto process is not running END_IF END_IF
+END_MODE:
 
+// Manual Mode Operation
+LD      Mode
+AND     ManualMode
+JMPC    CHECK_START_MANUAL
+JMP     AUTO_ROUTINE
 
+CHECK_START_MANUAL:
+LD      StartButton
+AND     NOT StopButton
+JMPC    MANUAL_START
+JMP     MANUAL_STOP
 
+MANUAL_START:
+LD      TRUE
+ST      ArmDown
+LD      FALSE
+ST      ArmUp
+LD      TRUE
+ST      GripperClose
+LD      FALSE
+ST      GripperOpen
+LD      TRUE
+ST      ConveyorRun
+JMP     END_MANUAL
+
+MANUAL_STOP:
+LD      FALSE
+ST      ArmDown
+ST      GripperClose
+ST      ConveyorRun
+
+END_MANUAL:
+JMP     END_ROUTINE
+
+// Auto Mode Routine (simplified pick-and-place sequence)
+AUTO_ROUTINE:
+// Step 1: Arm Down
+LD      TRUE
+ST      ArmDown
+// Simulate delay for movement
+LD      T1.IN
+ST      TRUE
+LD      T1.Q
+JMPC    STEP2
+JMP     END_ROUTINE
+
+STEP2:
+// Step 2: Gripper Close
+LD      TRUE
+ST      GripperClose
+LD      FALSE
+ST      GripperOpen
+LD      T1.IN
+ST      FALSE
+LD      T1.Q
+JMPC    STEP3
+JMP     END_ROUTINE
+
+STEP3:
+// Step 3: Arm Up
+LD      FALSE
+ST      ArmDown
+LD      TRUE
+ST      ArmUp
+LD      T1.IN
+ST      TRUE
+LD      T1.Q
+JMPC    STEP4
+JMP     END_ROUTINE
+
+STEP4:
+// Step 4: Conveyor Run
+LD      TRUE
+ST      ConveyorRun
+LD      T1.IN
+ST      FALSE
+LD      T1.Q
+JMPC    AUTO_STOP
+JMP     END_ROUTINE
+
+AUTO_STOP:
+LD      FALSE
+ST      ConveyorRun
+ST      ArmUp
+ST      GripperClose
+
+END_ROUTINE:
+// End of main logic loop

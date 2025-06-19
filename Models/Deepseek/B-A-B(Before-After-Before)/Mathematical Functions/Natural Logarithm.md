@@ -1,4 +1,21 @@
-**Natural Logarithm:**
+FUNCTION_BLOCK NaturalLog
+VAR_INPUT 
+    X : REAL; // The value for which to compute ln(X), must be greater than 0
+END_VAR
 
-Develop a self-contained function block in IEC 61131-3 Structured Text to compute the natural logarithm of a given input. Ensure that the implementation is efficient and well-documented, with comments explaining the mathematical foundation of the natural logarithm. Additionally, address potential edge cases, such as handling non-positive inputs, and discuss the precision and performance of this function block in typical industrial applications.
+VAR_OUTPUT 
+    LnX : REAL; // The computed natural logarithm of X
+    Error : BOOL; // TRUE if input is invalid (X <= 0)
+END_VAR
+
+// Additional variables can be declared here if needed
+
+
+IF X > 0.0 THEN
+    LnX := LN(X); // Use the built-in natural logarithm function where supported
+    Error := FALSE;
+ELSE
+    LnX := 0.0; // Alternatively, could return another specific value
+    Error := TRUE; // Indicates that the input is invalid
+END_IF;
 

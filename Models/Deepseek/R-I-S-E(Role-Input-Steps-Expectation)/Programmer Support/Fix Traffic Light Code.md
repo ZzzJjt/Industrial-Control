@@ -1,68 +1,97 @@
-**Fix Traffic Light Code:**
+// Detect rising edges on inputs
+RTrigPedestrian(CLK := PedestrianButtonPressed);
+RTrigEmergency(CLK := EmergencyVehicleApproaching);
 
-Can you find the error in the following 61131-3 ST code: PROGRAM TrafficLightControl VAR pedestrianButtonPressed: BOOL; emergencyVehicleApproaching: BOOL; greenLightOn: BOOL; yellowLightOn: BOOL; redLightOn: BOOL; timer: TON; // timer to control the duration of green and yellow lights END_VAR
-
-// Initialize the program greenLightOn := TRUE; yellowLightOn := FALSE; redLightOn := FALSE; timer(IN := NOT emergencyVehicleApproaching, PT := T#5s);
-
-// Main program loop WHILE TRUE DO // Check for pedestrian button press pedestrianButtonPressed := ReadPedestrianButton();
-
-// Check for emergency vehicle approaching
-emergencyVehicleApproaching := ReadEmergencyVehicleSensor();
-
-IF emergencyVehicleApproaching THEN
-    // Turn off all lights and turn on green light for emergency vehicle
-    greenLightOn := TRUE;
-    yellowLightOn := FALSE;
-    redLightOn := FALSE;
-    timer(IN := FALSE);
-
-ELSEIF pedestrianButtonPressed THEN
-    // Turn off all lights and turn on red light and pedestrian light
-    greenLightOn := FALSE;
-    yellowLightOn := FALSE;
-    redLightOn := TRUE;
-    timer(IN := FALSE);
-
-    // Wait for pedestrian to cross
-    WAIT UNTIL NOT pedestrianButtonPressed;
-
-    // Turn on yellow light for warning and start the timer
-    yellowLightOn := TRUE;
-    redLightOn := FALSE;
-    timer(IN := NOT emergencyVehicleApproaching);
-
-ELSE
-    // Check the timer and switch to the next light if it's time
-    IF timer.Q THEN
-        IF greenLightOn THEN
-            greenLightOn := FALSE;
-            yellowLightOn := TRUE;
-            timer(IN := NOT emergencyVehicleApproaching);
-
-        ELSEIF yellowLightOn THEN
-            yellowLightOn := FALSE;
-            redLightOn := TRUE;
-            timer(IN := FALSE);
-
-        ELSE // red light is on
-            redLightOn := FALSE;
-            greenLightOn := TRUE;
-            timer(IN := NOT emergencyVehicleApproaching);
-        END_IF;
-    END_IF;
+// If emergency detected, immediately switch to EMERGENCY state
+IF RTrigEmergency.Q THEN
+    CurrentState := E_TRAFFIC_LIGHT_STATE.EMERGENCY;
+    StateTimer(IN := FALSE); // Reset timer
 END_IF;
 
-// Set the traffic lights based on the variables
-SetTrafficLights(greenLightOn, yellowLightOn, redLightOn);
+CASE CurrentState OF
 
-// Wait for a short time before checking again
-DELAY 100ms;
+    E_TRAFFIC_LIGHT_STATE.IDLE:
+        RedLightOn := TRUE;
+        GreenLightOn := FALSE;
+        YellowLightOn := FALSE;
 
-END_WHILE
+        IF NOT EmergencyVehicleApproaching THEN
+            CurrentState := E_TRAFFIC_LIGHT_STATE.GREEN;
+        END_IF;
 
-// Read the pedestrian button state from an input FUNCTION ReadPedestrianButton: BOOL // Code to read the input goes here END_FUNCTION
+    E_TRAFFIC_LIGHT_STATE.GREEN:
+        RedLightOn := FALSE;
+        GreenLightOn := TRUE;
+        YellowLightOn := FALSE;
 
-// Read the emergency vehicle sensor state from an input FUNCTION ReadEmergencyVehicleSensor: BOOL // Code to read the input goes here END_FUNCTION
+        // Start timer for green phase
+        StateTimer(IN := TRUE, PT := T#30s);
 
-// Set the traffic lights based on the variables PROCEDURE SetTrafficLights( green: BOOL; yellow: BOOL; red: BOOL ) // Code to set the traffic lights goes here END_PROCEDURE
+        // Check for pedestrian request
+        IF RTrigPedestrian.Q THEN
+            PedestrianRequest := TRUE;
+        END_IF;
 
+        IF StateTimer.Q THEN
+            StateTimer(IN := FALSE); // Stop timer
+            CurrentState := E_TRAFFIC_LIGHT_STATE.YELLOW;
+        END_IF;
+
+    E_TRAFFIC_LIGHT_STATE.YELLOW:
+        RedLightOn := FALSE;
+        GreenLightOn := FALSE;
+        YellowLightOn := TRUE;
+
+        StateTimer(IN := TRUE, PT := T#5s);
+
+        IF StateTimer.Q THEN
+            StateTimer(IN := FALSE);
+            CurrentState := E_TRAFFIC_LIGHT_STATE.RED;
+        END_IF;
+
+    E_TRAFFIC_LIGHT_STATE.RED:
+        RedLightOn := TRUE;
+        GreenLightOn := FALSE;
+        YellowLightOn := FALSE;
+
+        IF PedestrianRequest THEN
+            CurrentState := E_TRAFFIC_LIGHT_STATE.PEDESTRIAN_WAIT;
+            PedestrianRequest := FALSE;
+        ELSE
+            StateTimer(IN := TRUE, PT := T#10s);
+            IF StateTimer.Q THEN
+                StateTimer(IN := FALSE);
+                CurrentState := E_TRAFFIC_LIGHT_STATE.GREEN;
+            END_IF;
+        END_IF;
+
+    E_TRAFFIC_LIGHT_STATE.PEDESTRIAN_WAIT:
+        RedLightOn := TRUE;
+        GreenLightOn := FALSE;
+        YellowLightOn := FALSE;
+
+        StateTimer(IN := TRUE, PT := T#20s); // Safe walk time
+
+        IF StateTimer.Q THEN
+            StateTimer(IN := FALSE);
+            CurrentState := E_TRAFFIC_LIGHT_STATE.GREEN;
+        END_IF;
+
+    E_TRAFFIC_LIGHT_STATE.EMERGENCY:
+        RedLightOn := FALSE;
+        GreenLightOn := FALSE;
+        YellowLightOn := TRUE;
+
+        // Flash yellow rapidly (handled via external flashing logic or HMI)
+        StateTimer(IN := TRUE, PT := T#500ms);
+        IF StateTimer.Q THEN
+            YellowLightOn := NOT YellowLightOn;
+            StateTimer(IN := FALSE);
+        END_IF;
+
+        // Exit emergency when signal cleared
+        IF NOT EmergencyVehicleApproaching THEN
+            CurrentState := E_TRAFFIC_LIGHT_STATE.IDLE;
+        END_IF;
+
+END_CASE;

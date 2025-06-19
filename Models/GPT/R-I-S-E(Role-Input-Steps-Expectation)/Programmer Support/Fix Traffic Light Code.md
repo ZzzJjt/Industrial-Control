@@ -1,68 +1,119 @@
-**Fix Traffic Light Code:**
+// === Traffic Light FSM in IEC 61131-3 ST ===
 
-Can you find the error in the following 61131-3 ST code: PROGRAM TrafficLightControl VAR pedestrianButtonPressed: BOOL; emergencyVehicleApproaching: BOOL; greenLightOn: BOOL; yellowLightOn: BOOL; redLightOn: BOOL; timer: TON; // timer to control the duration of green and yellow lights END_VAR
+TYPE TrafficState : (IDLE, GREEN, YELLOW, RED, PEDESTRIAN_WAIT, EMERGENCY);
+END_TYPE
 
-// Initialize the program greenLightOn := TRUE; yellowLightOn := FALSE; redLightOn := FALSE; timer(IN := NOT emergencyVehicleApproaching, PT := T#5s);
+VAR
+    // Inputs
+    pedestrianButtonPressed : BOOL;
+    emergencyVehicleApproaching : BOOL;
 
-// Main program loop WHILE TRUE DO // Check for pedestrian button press pedestrianButtonPressed := ReadPedestrianButton();
+    // Outputs
+    greenLightOn : BOOL;
+    yellowLightOn : BOOL;
+    redLightOn : BOOL;
 
-// Check for emergency vehicle approaching
-emergencyVehicleApproaching := ReadEmergencyVehicleSensor();
+    // State
+    currentState : TrafficState := IDLE;
 
-IF emergencyVehicleApproaching THEN
-    // Turn off all lights and turn on green light for emergency vehicle
-    greenLightOn := TRUE;
-    yellowLightOn := FALSE;
-    redLightOn := FALSE;
-    timer(IN := FALSE);
+    // Timer
+    phaseTimer : TON;
+    timerEnable : BOOL := FALSE;
 
-ELSEIF pedestrianButtonPressed THEN
-    // Turn off all lights and turn on red light and pedestrian light
-    greenLightOn := FALSE;
-    yellowLightOn := FALSE;
-    redLightOn := TRUE;
-    timer(IN := FALSE);
+    // Rising edge detection
+    rPedestrian : R_TRIG;
+    rEmergency : R_TRIG;
 
-    // Wait for pedestrian to cross
-    WAIT UNTIL NOT pedestrianButtonPressed;
+    // Internal
+    tGreen  : TIME := T#10s;
+    tYellow : TIME := T#3s;
+    tRed    : TIME := T#7s;
+END_VAR
 
-    // Turn on yellow light for warning and start the timer
-    yellowLightOn := TRUE;
-    redLightOn := FALSE;
-    timer(IN := NOT emergencyVehicleApproaching);
+// === Edge detection for rising input signals ===
+rPedestrian(CLK := pedestrianButtonPressed);
+rEmergency(CLK := emergencyVehicleApproaching);
 
-ELSE
-    // Check the timer and switch to the next light if it's time
-    IF timer.Q THEN
-        IF greenLightOn THEN
-            greenLightOn := FALSE;
-            yellowLightOn := TRUE;
-            timer(IN := NOT emergencyVehicleApproaching);
+// === Default: no timer unless activated below ===
+timerEnable := FALSE;
 
-        ELSEIF yellowLightOn THEN
-            yellowLightOn := FALSE;
-            redLightOn := TRUE;
-            timer(IN := FALSE);
+// === State machine logic ===
+CASE currentState OF
 
-        ELSE // red light is on
-            redLightOn := FALSE;
-            greenLightOn := TRUE;
-            timer(IN := NOT emergencyVehicleApproaching);
-        END_IF;
-    END_IF;
-END_IF;
+    IDLE:
+        redLightOn := TRUE;
+        greenLightOn := FALSE;
+        yellowLightOn := FALSE;
 
-// Set the traffic lights based on the variables
-SetTrafficLights(greenLightOn, yellowLightOn, redLightOn);
+        IF rEmergency.Q THEN
+            currentState := EMERGENCY;
+        ELSIF rPedestrian.Q THEN
+            currentState := PEDESTRIAN_WAIT;
+        ELSE
+            currentState := GREEN;
+            timerEnable := TRUE;
+            phaseTimer(IN := timerEnable, PT := tGreen);
+        END_IF
 
-// Wait for a short time before checking again
-DELAY 100ms;
+    GREEN:
+        greenLightOn := TRUE;
+        yellowLightOn := FALSE;
+        redLightOn := FALSE;
 
-END_WHILE
+        timerEnable := TRUE;
+        phaseTimer(IN := timerEnable, PT := tGreen);
 
-// Read the pedestrian button state from an input FUNCTION ReadPedestrianButton: BOOL // Code to read the input goes here END_FUNCTION
+        IF phaseTimer.Q THEN
+            currentState := YELLOW;
+        END_IF
 
-// Read the emergency vehicle sensor state from an input FUNCTION ReadEmergencyVehicleSensor: BOOL // Code to read the input goes here END_FUNCTION
+    YELLOW:
+        greenLightOn := FALSE;
+        yellowLightOn := TRUE;
+        redLightOn := FALSE;
 
-// Set the traffic lights based on the variables PROCEDURE SetTrafficLights( green: BOOL; yellow: BOOL; red: BOOL ) // Code to set the traffic lights goes here END_PROCEDURE
+        timerEnable := TRUE;
+        phaseTimer(IN := timerEnable, PT := tYellow);
 
+        IF phaseTimer.Q THEN
+            currentState := RED;
+        END_IF
+
+    RED:
+        greenLightOn := FALSE;
+        yellowLightOn := FALSE;
+        redLightOn := TRUE;
+
+        timerEnable := TRUE;
+        phaseTimer(IN := timerEnable, PT := tRed);
+
+        IF phaseTimer.Q THEN
+            currentState := IDLE;
+        END_IF
+
+    PEDESTRIAN_WAIT:
+        greenLightOn := FALSE;
+        yellowLightOn := FALSE;
+        redLightOn := TRUE;
+
+        timerEnable := TRUE;
+        phaseTimer(IN := timerEnable, PT := tRed);
+
+        IF phaseTimer.Q THEN
+            currentState := GREEN;
+        END_IF
+
+    EMERGENCY:
+        greenLightOn := FALSE;
+        yellowLightOn := FALSE;
+        redLightOn := TRUE;
+
+        // Stay in EMERGENCY until cleared
+        IF NOT emergencyVehicleApproaching THEN
+            currentState := IDLE;
+        END_IF
+
+END_CASE
+
+// === Timer execution ===
+phaseTimer(IN := timerEnable);

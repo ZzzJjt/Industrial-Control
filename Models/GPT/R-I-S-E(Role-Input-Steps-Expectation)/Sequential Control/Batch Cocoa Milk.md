@@ -1,6 +1,24 @@
-**Batch Cocoa Milk:**
+VAR
+    // Process Parameters
+    Temp_Setpoint : REAL := 70.0;      // Target temperature in °C
+    Mixing_Speed  : INT := 200;        // RPM
+    Mixing_Time   : TIME := T#10m;     // Mixing duration
 
-Create an ISA-88 batch control recipe for producing 100 kg of cocoa milk, detailing the required ingredients, including milk, water, liquid sugar, and cocoa. The equipment should consist of a mixing and blending vessel capable of stirring and heating. Specify appropriate amounts for each ingredient, as well as optimal mixing temperatures and heating times.
+    // Inputs (from sensors/actuators)
+    Temperature   : REAL;              // Actual vessel temperature
+    Mixer_Speed   : INT;               // Actual RPM
 
-Write a self-contained program in IEC 61131-3 Structured Text for the sequential control of the mixing process, incorporating typical parameter values such as stirring speed, temperature control, and time duration. Ensure the program follows ISA-88 principles, with clear logic for controlling the heating and blending phases. Discuss the challenges in scaling and optimizing the control process for industrial production.
+    // Outputs
+    Valve_Milk      : BOOL := FALSE;
+    Valve_Water     : BOOL := FALSE;
+    Valve_Sugar     : BOOL := FALSE;
+    Valve_Cocoa     : BOOL := FALSE;
+    Heater          : BOOL := FALSE;
+    Mixer_Start     : BOOL := FALSE;
 
+    // Control
+    BatchStep       : INT := 0;         // 0=Idle, 1=Add, 2=Heat, 3=Mix, 4=Done
+    Timer_Mixing    : TON;
+    MixingStarted   : BOOL := FALSE;
+    Batch_Complete  : BOOL := FALSE;
+END_VAR

@@ -1,6 +1,18 @@
-**Extended Cause & Process Action Matrix:**
-
-Develop an extended cause and process action matrix for the interlocks in a chemical reactor. Each row should represent a specific cause (e.g., sensor values exceeding limits), and the column headings should represent safety actions performed using actuators in the system. The matrix should illustrate how different causes trigger specific actions to ensure safe operation.
-
-Discuss how this extended matrix provides a clear mapping between potential hazardous situations and the corresponding safety actions. Emphasize the importance of designing interlocks that ensure safe and stable reactor operation, preventing risks such as overpressure, underheating, and process failures.
-
+\begin{table}[htbp]
+\centering
+\caption{Cause and Process Action Matrix for Reactor Interlocks}
+\begin{tabular}{|l|c|c|c|c|c|c|}
+\hline
+\textbf{Cause} & \textbf{Close Feed Valve} & \textbf{Stop Agitator} & \textbf{Open Relief Valve} & \textbf{Stop Heating} & \textbf{Trigger Alarm} & \textbf{Safe Shutdown} \\
+\hline
+High Pressure         & \checkmark &              & \checkmark & \checkmark & \checkmark &              \\
+Low Temperature       &            &              &            &            & \checkmark & \checkmark   \\
+High Temperature      & \checkmark &              &            & \checkmark & \checkmark &              \\
+Level Sensor Failure  & \checkmark & \checkmark   &            &            & \checkmark & \checkmark   \\
+Overfill              & \checkmark &              &            &            & \checkmark &              \\
+Agitator Motor Fault  &            & \checkmark   &            &            & \checkmark & \checkmark   \\
+Gas Leak Detected     & \checkmark & \checkmark   & \checkmark & \checkmark & \checkmark & \checkmark   \\
+\hline
+\end{tabular}
+\label{tab:interlock_matrix}
+\end{table}

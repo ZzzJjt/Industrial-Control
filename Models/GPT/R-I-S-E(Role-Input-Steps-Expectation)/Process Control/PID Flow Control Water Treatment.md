@@ -1,5 +1,46 @@
-**PID Flow Control Water Treatment:**
+FUNCTION_BLOCK FB_ChlorineDosingPID
+VAR_INPUT
+    FlowRate      : REAL;     // Measured flow rate (L/min)
+    Dosing_PV     : REAL;     // Measured chlorine concentration (ppm)
+    Dosing_SP     : REAL := 3.0; // Setpoint: 3 ppm
+END_VAR
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement PID feedback control for chemical dosing in a water treatment process. The program should regulate the dosing rate of chlorine at 3 ppm, adjusting based on real-time flow measurements with a sampling rate of 100 ms.
+VAR_OUTPUT
+    Dosing_Output : REAL;     // Output signal to dosing pump
+END_VAR
 
-The control logic should include PID parameters (proportional, integral, and derivative gains) that are tuned for maintaining the desired dosing concentration. Ensure the program accounts for any deviations from the setpoint and adjusts the chemical dosing accordingly, while including safety limits to prevent overdosing or underdosing. Discuss the importance of precise flow control in water treatment, with a focus on maintaining safe and effective chemical levels.
+VAR
+    // PID internal states
+    Error         : REAL;
+    Prev_Error    : REAL := 0.0;
+    Integral      : REAL := 0.0;
+    Derivative    : REAL;
+    
+    // PID tuning parameters
+    Kp            : REAL := 2.0;
+    Ki            : REAL := 0.5;
+    Kd            : REAL := 0.1;
+    
+    // Time step
+    dt            : REAL := 0.1; // 100 ms sample time
+    
+    // Output limits
+    Max_Dose      : REAL := 10.0;
+    Min_Dose      : REAL := 0.0;
+END_VAR
+
+// --- PID calculation ---
+Error := Dosing_SP - Dosing_PV;
+Integral := Integral + Error * dt;
+Derivative := (Error - Prev_Error) / dt;
+
+Dosing_Output := (Kp * Error) + (Ki * Integral) + (Kd * Derivative);
+
+// --- Clamp dosing output to safe range ---
+IF Dosing_Output > Max_Dose THEN
+    Dosing_Output := Max_Dose;
+ELSIF Dosing_Output < Min_Dose THEN
+    Dosing_Output := Min_Dose;
+END_IF;
+
+Prev_Error := Error;

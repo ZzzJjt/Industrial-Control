@@ -1,4 +1,11 @@
-**Natural Logarithm:**
+Cause / Effect                  | Compute LnX | Set Error | Log Event | Set LnX to 0.0
+--------------------------------|-------------|-----------|-----------|----------------
+Valid Input (X > 0)             | X           |           | X         | 
+Non-Positive Input (X ≤ 0)      |             | X (1)     | X         | X
+Invalid Input (NaN, >1E6)       |             | X (2)     | X         | X
 
-Develop a self-contained function block in IEC 61131-3 Structured Text to compute the natural logarithm of a given input. Ensure that the implementation is efficient and well-documented, with comments explaining the mathematical foundation of the natural logarithm. Additionally, address potential edge cases, such as handling non-positive inputs, and discuss the precision and performance of this function block in typical industrial applications.
-
+Legend:
+- Compute LnX: Executes LN(X)
+- Set Error: Sets Error := TRUE, ErrorID
+- Log Event: Records event to AuditMessage
+- Set LnX to 0.0: Sets LnX to 0.0

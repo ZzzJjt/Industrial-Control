@@ -1,6 +1,86 @@
-**PID Pressure Control Chemical Reactor:**
+FUNCTION_BLOCK FB_ReactorPressurePID
+VAR_INPUT
+    // Process Variable - Measured Pressure (bar)
+    Pressure_PV : REAL;
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement PID feedback control for regulating the pressure in a chemical reactor. The program should continuously adjust the opening of a pressure control valve based on a setpoint to maintain optimal pressure levels within the reactor.
+    // Setpoint - Target Pressure (bar)
+    Pressure_SP : REAL := 5.0;
 
-Include the PID control loop parameters (proportional, integral, and derivative gains) and ensure the logic accounts for pressure deviations from the setpoint. The program should also include safeguards to prevent over-pressurization or under-pressurization by limiting the valve’s operational range. Discuss the critical role of pressure control in chemical reactors, emphasizing safety, process efficiency, and system stability under dynamic reaction conditions.
+    // Tuning Parameters
+    Kp : REAL := 2.0;
+    Ki : REAL := 0.8;
+    Kd : REAL := 0.3;
 
+    // Sampling Time (seconds, e.g., T#100ms = 0.1s)
+    Sample_Time : REAL := 0.1;
+
+    // Valve Position Limits (% open)
+    Valve_Min : REAL := 0.0;
+    Valve_Max : REAL := 100.0;
+END_VAR
+
+VAR_OUTPUT
+    // Calculated output to the control valve
+    Valve_Output : REAL;
+END_VAR
+
+VAR
+    // Internal Variables
+    Error : REAL;
+    Prev_Error : REAL := 0.0;
+    Integral : REAL := 0.0;
+    Derivative : REAL := 0.0;
+
+    // Anti-windup flag
+    Integral_Limited : BOOL := FALSE;
+END_VAR
+
+// --- STEP 1: Calculate error ---
+Error := Pressure_SP - Pressure_PV;
+
+// --- STEP 2: Update integral term with anti-windup ---
+Integral_Limited := FALSE;
+
+IF (Valve_Output >= Valve_Max AND Error > 0) OR 
+   (Valve_Output <= Valve_Min AND Error < 0) THEN
+    Integral_Limited := TRUE;
+ELSE
+    Integral := Integral + Error * Sample_Time;
+END_IF;
+
+// --- STEP 3: Compute derivative ---
+Derivative := (Error - Prev_Error) / Sample_Time;
+
+// --- STEP 4: Apply PID formula ---
+Valve_Output := (Kp * Error) + (Ki * Integral) + (Kd * Derivative);
+
+// --- STEP 5: Clamp output to valve limits ---
+IF Valve_Output > Valve_Max THEN
+    Valve_Output := Valve_Max;
+ELSIF Valve_Output < Valve_Min THEN
+    Valve_Output := Valve_Min;
+END_IF;
+
+// --- STEP 6: Save current error for next cycle ---
+Prev_Error := Error;
+
+PROGRAM PLC_PRG
+VAR
+    ReactorCtrl : FB_ReactorPressurePID;
+
+    // Simulated Inputs
+    CurrentPressure : REAL := 4.9; // Bar
+    ValveCommand : REAL;
+END_VAR
+
+// Call the function block
+ReactorCtrl(
+    Pressure_PV := CurrentPressure,
+    Pressure_SP := 5.0,
+    Kp := 2.0,
+    Ki := 0.8,
+    Kd := 0.3,
+    Sample_Time := 0.1,
+
+    Valve_Output => ValveCommand
+);

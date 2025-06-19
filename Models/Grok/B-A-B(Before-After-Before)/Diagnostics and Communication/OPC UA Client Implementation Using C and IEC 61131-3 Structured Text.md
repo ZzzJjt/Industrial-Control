@@ -1,3 +1,37 @@
-**OPC UA Client Implementation Using C and IEC 61131-3 Structured Text:**
+#include <open62541/client_config_default.h>
+#include <open62541/client_highlevel.h>
+#include <string.h>
+#include <stdint.h>
 
-Develop C-code for an OPC UA client, then wrap it into an IEC 61131-based function block written in structured text (ST). The function block should have the following input pins: Execute (type: BOOL), ServerUrl (type: STRING[255]), and Timeout (type: TIME). The output pins should include Done (type: BOOL), Busy (type: BOOL), Error (type: BOOL), and ErrorID (type: DWORD). In your explanation, describe how the C-code interfaces with the OPC UA server, how the function block manages communication with the server, and how error handling is implemented. Provide details on how to integrate this function block within an IEC 61131-3 environment for reliable client-server communication.
+// Function to connect to OPC UA server
+// Returns: 0 on success, error code otherwise
+uint32_t OPCUA_Connect(const char* serverUrl, uint32_t timeoutMs, UA_Client** client) {
+    if (!serverUrl || !client) return 1; // Invalid parameters
+
+    // Initialize client
+    *client = UA_Client_new();
+    if (!*client) return 2; // Memory allocation failed
+
+    UA_ClientConfig_setDefault(UA_Client_getConfig(*client));
+
+    // Set timeout
+    UA_Client_getConfig(*client)->timeout = timeoutMs;
+
+    // Connect to server
+    UA_StatusCode status = UA_Client_connect(*client, serverUrl);
+    if (status != UA_STATUSCODE_GOOD) {
+        UA_Client_delete(*client);
+        *client = NULL;
+        return status; // Return OPC UA status code
+    }
+
+    return 0; // Success
+}
+
+// Function to disconnect from OPC UA server
+void OPCUA_Disconnect(UA_Client* client) {
+    if (client) {
+        UA_Client_disconnect(client);
+        UA_Client_delete(client);
+    }
+}

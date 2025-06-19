@@ -1,6 +1,62 @@
-**PID Pressure Control Chemical Reactor:**
+PROGRAM PressureControl
+VAR
+    // Inputs
+    Pressure_PV : REAL; // Measured reactor pressure (bar)
+    Pressure_SP : REAL := 5.0; // Pressure setpoint (bar)
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement PID feedback control for regulating the pressure in a chemical reactor. The program should continuously adjust the opening of a pressure control valve based on a setpoint to maintain optimal pressure levels within the reactor.
+    // PID gains
+    Kp : REAL := 2.0;
+    Ki : REAL := 0.8;
+    Kd : REAL := 0.3;
 
-Include the PID control loop parameters (proportional, integral, and derivative gains) and ensure the logic accounts for pressure deviations from the setpoint. The program should also include safeguards to prevent over-pressurization or under-pressurization by limiting the valve’s operational range. Discuss the critical role of pressure control in chemical reactors, emphasizing safety, process efficiency, and system stability under dynamic reaction conditions.
+    // Internal PID variables
+    Error : REAL;
+    Prev_Error : REAL := 0.0;
+    Integral : REAL := 0.0;
+    Derivative : REAL;
+    Valve_Output : REAL;
 
+    // Safety constraints
+    Valve_Min : REAL := 0.0;
+    Valve_Max : REAL := 100.0;
+
+    // Timer for sampling every 100 ms
+    SamplingTimer : TON;
+END_VAR
+
+// Initialize the timer with a period of 100 ms
+SamplingTimer(PT := T#100ms);
+
+// Main control loop
+IF SamplingTimer.Q THEN
+    // Calculate error
+    Error := Pressure_SP - Pressure_PV;
+
+    // Update integral term
+    Integral := Integral + Error * 0.1; // Integral over 100 ms
+
+    // Update derivative term
+    Derivative := (Error - Prev_Error) / 0.1; // Derivative over 100 ms
+
+    // Calculate PID output
+    Valve_Output := (Kp * Error) + (Ki * Integral) + (Kd * Derivative);
+
+    // Clamp output to safe range
+    IF Valve_Output > Valve_Max THEN
+        Valve_Output := Valve_Max;
+    ELSIF Valve_Output < Valve_Min THEN
+        Valve_Output := Valve_Min;
+    END_IF;
+
+    // Store current error as previous error for next iteration
+    Prev_Error := Error;
+
+    // Reset the timer
+    SamplingTimer(IN := FALSE);
+END_IF;
+
+// Start the timer
+SamplingTimer(IN := TRUE);
+
+// Valve_Output is sent to valve control interface
+// Example: SetValvePosition(Valve_Output); // Placeholder function to set valve position

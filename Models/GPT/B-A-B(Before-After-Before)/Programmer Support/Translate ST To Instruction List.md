@@ -1,14 +1,56 @@
-**Translate ST To Instruction List:**
+VAR
+    AutoMode: BOOL;
+    ManualMode: BOOL;
+    StartCycle: BOOL;
+    ArmReady: BOOL;
+    ConveyorReady: BOOL;
+    ArmCommand: BOOL;
+    ConveyorCommand: BOOL;
+END_VAR
 
-Translate the following 61131-3 Structured Text program to 61131-3 Instruction List: PROGRAM PickAndPlace VAR ManualButton : BOOL; // Input signal for manual mode AutoButton : BOOL; // Input signal for auto mode ClipButton : BOOL; // Input signal for clip action TransferButton : BOOL; // Input signal for transfer action ReleaseButton : BOOL; // Input signal for release action ConveyorA : BOOL; // Input signal for presence of product on conveyor A ConveyorB : BOOL; // Output signal to control conveyor B RoboticArm : BOOL; // Output signal to control the robotic arm Mode : INT := 0; // Internal variable to store the current mode (0 = manual, 1 = auto) AutoProcess : BOOL := FALSE; // Internal variable to store whether the auto control process is currently running END_VAR
+IF AutoMode AND StartCycle THEN
+    IF ArmReady THEN
+        ArmCommand := TRUE;
+    END_IF;
+    IF ConveyorReady THEN
+        ConveyorCommand := TRUE;
+    END_IF;
+ELSIF ManualMode THEN
+    ArmCommand := FALSE;
+    ConveyorCommand := FALSE;
+END_IF;
 
-// Manual mode control process IF ManualButton THEN Mode := 0; // Set mode to manual END_IF
+      LD    AutoMode           // If AutoMode AND StartCycle
+      AND   StartCycle
+      JMPC  auto_section       // Jump to auto_section if condition is TRUE
+      LD    ManualMode         // Else if ManualMode
+      JMPC  manual_section     // Jump to manual_section
 
-IF Mode = 0 THEN // Manual mode IF ClipButton AND ConveyorA THEN RoboticArm := TRUE; // Clip the product ELSIF TransferButton THEN ConveyorB := TRUE; // Transfer the product to conveyor B ELSIF ReleaseButton THEN ConveyorB := FALSE; // Release the product from conveyor B END_IF END_IF
+      JMP   end                // If neither, skip to end
 
-// Auto mode control process IF AutoButton THEN Mode := 1; // Set mode to auto END_IF
+auto_section:
+      LD    ArmReady
+      JMPC  arm_ok
+      JMP   conveyor_check     // Skip ArmCommand if not ready
 
-IF Mode = 1 THEN // Auto mode IF NOT AutoProcess AND ConveyorA THEN // Only start the process if not currently running and there is a product on conveyor A AutoProcess := TRUE; // Set flag to indicate that the auto process is running RoboticArm := TRUE; // Clip the product WAIT 2; // Wait for 2 seconds to transfer the product ConveyorB := TRUE; // Transfer the product to conveyor B END_IF IF ConveyorB AND NOT ConveyorA THEN // Release the product from conveyor B once it has been transferred and there is no product on conveyor A ConveyorB := FALSE; AutoProcess := FALSE; // Clear the flag to indicate that the auto process is not running END_IF END_IF
+arm_ok:
+      LD    TRUE
+      ST    ArmCommand
 
+conveyor_check:
+      LD    ConveyorReady
+      JMPC  conveyor_ok
+      JMP   end
 
+conveyor_ok:
+      LD    TRUE
+      ST    ConveyorCommand
+      JMP   end
 
+manual_section:
+      LD    FALSE
+      ST    ArmCommand
+      ST    ConveyorCommand
+
+end:
+      NOP

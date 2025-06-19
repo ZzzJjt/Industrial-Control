@@ -1,6 +1,45 @@
-**PID Pressure Control Chemical Reactor:**
+FUNCTION_BLOCK FB_PID_PressureControl
+VAR_INPUT
+    Pressure_PV : REAL;         // Measured pressure (bar)
+    Pressure_SP : REAL := 5.0;  // Desired setpoint (bar)
+END_VAR
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement PID feedback control for regulating the pressure in a chemical reactor. The program should continuously adjust the opening of a pressure control valve based on a setpoint to maintain optimal pressure levels within the reactor.
+VAR_OUTPUT
+    Valve_Output : REAL;        // Valve position output (0–100%)
+END_VAR
 
-Include the PID control loop parameters (proportional, integral, and derivative gains) and ensure the logic accounts for pressure deviations from the setpoint. The program should also include safeguards to prevent over-pressurization or under-pressurization by limiting the valve’s operational range. Discuss the critical role of pressure control in chemical reactors, emphasizing safety, process efficiency, and system stability under dynamic reaction conditions.
+VAR
+    // PID tuning parameters
+    Kp : REAL := 2.0;
+    Ki : REAL := 0.8;
+    Kd : REAL := 0.3;
 
+    // PID internal variables
+    Error      : REAL;
+    Prev_Error : REAL := 0.0;
+    Integral   : REAL := 0.0;
+    Derivative : REAL;
+
+    // Valve limits
+    Valve_Min : REAL := 0.0;
+    Valve_Max : REAL := 100.0;
+
+    // Time step (sampling interval)
+    dt : REAL := 0.1; // 100 ms
+END_VAR
+
+// --- PID Logic ---
+Error := Pressure_SP - Pressure_PV;
+Integral := Integral + Error * dt;
+Derivative := (Error - Prev_Error) / dt;
+
+Valve_Output := (Kp * Error) + (Ki * Integral) + (Kd * Derivative);
+
+// --- Clamp valve output ---
+IF Valve_Output > Valve_Max THEN
+    Valve_Output := Valve_Max;
+ELSIF Valve_Output < Valve_Min THEN
+    Valve_Output := Valve_Min;
+END_IF;
+
+Prev_Error := Error;

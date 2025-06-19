@@ -1,12 +1,83 @@
-**Shutdown Steel Production:**
+PROGRAM FurnaceShutdown
 
-Develop a comprehensive list of steps for the controlled shutdown of a steel production facility. Include key stages such as reducing furnace temperature, controlling gas flow rates, and maintaining safe oxygen levels throughout the shutdown process.
+VAR
+    // Phase control
+    ShutdownStep : INT := 1;
 
-Provide a detailed control narrative for steps 4 to 6 of the shutdown sequence, specifying concrete ranges and setpoints for variables such as temperature, gas flow, and oxygen levels.
+    // Process variables
+    FurnaceTemp : REAL;
+    GasFlowRate : REAL;
+    OxygenFlowRate : REAL;
 
-Write a self-contained IEC 61131-3 Structured Text program based on this control narrative, ensuring proper sequencing and safety protocols.
+    // Target parameters
+    TargetTemp : REAL := 150.0; // °C for cooldown
+    TargetGasFlow : REAL := 0.0; // Fully off
+    TargetO2Ratio : REAL := 2.5; // Fuel:O2 = 1:2.5
 
-Additionally, create a function in IEC 61131-3 to gradually reduce the fuel gas flow rate to the furnace burners over a period of 12 hours. This function should incorporate timing and safety checks to ensure smooth transitions.
+    // Timing
+    RampTimer : TON;
+    StepTimer : TON;
+    StepDuration : TIME := T#30m;
 
-Lastly, write an IEC 61131-3 function for adjusting the oxygen supply to the burners to maintain a precise fuel-to-air ratio of 1:2.5 during the shutdown. Ensure the function is adaptable to fluctuations in gas flow and temperature, and include safeguards for maintaining combustion efficiency.
+    // Function block outputs
+    NewGasFlow : REAL;
+    NewO2Flow : REAL;
+END_VAR
 
+// --- Read real-time process variables (to be linked to sensors) ---
+// FurnaceTemp := ReadFurnaceTemp();
+// GasFlowRate := ReadGasFlowRate();
+
+CASE ShutdownStep OF
+
+    1: // Step 1 – Begin cooldown
+        StartCooling(); // User-defined function
+        StepTimer(IN := TRUE, PT := StepDuration);
+        IF StepTimer.Q THEN
+            ShutdownStep := 2;
+            StepTimer(IN := FALSE);
+        END_IF;
+
+    2: // Step 2 – Ramp down gas over 12 hours
+        RampTimer(IN := TRUE, PT := T#12h);
+        NewGasFlow := RampDownGas(InitialFlow := GasFlowRate, Timer := RampTimer);
+        SetGasFlow(NewGasFlow);
+        IF RampTimer.Q THEN
+            ShutdownStep := 3;
+            RampTimer(IN := FALSE);
+        END_IF;
+
+    3: // Step 3 – Adjust oxygen for safe ratio
+        NewO2Flow := AdjustOxygen(GasFlow := NewGasFlow, Temp := FurnaceTemp);
+        SetOxygenFlow(NewO2Flow);
+        IF FurnaceTemp <= TargetTemp THEN
+            ShutdownStep := 4;
+        END_IF;
+
+    4: // Step 4 – Maintain safety idle for 30 min
+        MaintainIdle(); // hold valves, monitor temps
+        StepTimer(IN := TRUE, PT := StepDuration);
+        IF StepTimer.Q THEN
+            ShutdownStep := 5;
+            StepTimer(IN := FALSE);
+        END_IF;
+
+    5: // Step 5 – Final isolation
+        CloseAllValves();
+        IsolateFurnace();
+        ShutdownStep := 6;
+
+    6: // Step 6 – Shutdown complete
+        SetSystemState(SHUTDOWN_COMPLETE);
+END_CASE
+
+FUNCTION AdjustOxygen : REAL
+VAR_INPUT
+    GasFlow : REAL;
+    Temp : REAL; // Optional: can include temp compensation if needed
+END_VAR
+VAR
+    O2Ratio : REAL := 2.5;
+BEGIN
+    AdjustOxygen := GasFlow * O2Ratio;
+END_FUNCTION

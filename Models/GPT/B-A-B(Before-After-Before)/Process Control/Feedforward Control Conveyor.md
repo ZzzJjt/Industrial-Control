@@ -1,7 +1,24 @@
-**Feedforward Control Conveyor:**
+VAR
+    // === Inputs ===
+    Predicted_Load : REAL;            // Load prediction input (kg or volume)
+    Base_Speed : REAL := 1.0;         // Minimum conveyor speed (m/s)
+    Max_Load : REAL := 100.0;         // Maximum expected load (kg)
 
-Develop a self-contained IEC 61131-3 Structured Text program (not a function block) to implement feedforward control for adjusting the speed of a conveyor belt based on sensor-predicted load changes. The program should use input from sensors that predict the weight or volume of material entering the conveyor system, allowing for real-time adjustments to the belt speed before a load change occurs.
+    // === Feedforward Coefficient ===
+    Gain_FF : REAL := 0.02;           // Speed increase per kg of load
 
-Include logic that calculates the required conveyor speed based on the predicted load and adjusts the motor speed accordingly, ensuring that the conveyor operates efficiently without overloading or underloading. Discuss the benefits of feedforward control in conveyor systems, particularly in reducing delays and improving response times compared to feedback-only control strategies.
+    // === Output ===
+    Conveyor_Speed : REAL;            // Final conveyor speed (m/s)
+END_VAR
 
+// === Feedforward Control Calculation ===
+Conveyor_Speed := Base_Speed + Gain_FF * Predicted_Load;
 
+// === Clamping Logic to Safe Speed Range ===
+IF Conveyor_Speed > 2.0 THEN
+    Conveyor_Speed := 2.0;            // Upper limit for safety
+ELSIF Conveyor_Speed < 0.5 THEN
+    Conveyor_Speed := 0.5;            // Lower limit for reliable operation
+END_IF
+
+// === Conveyor_Speed is the control signal to motor drive ===

@@ -1,6 +1,84 @@
-**Batch Cocoa Milk:**
+PROGRAM CocoaMilkBatchControl
+VAR
+    // State logic
+    state : INT := 0;
 
-Create an ISA-88 batch control recipe for producing 100 kg of cocoa milk, detailing the required ingredients, including milk, water, liquid sugar, and cocoa. The equipment should consist of a mixing and blending vessel capable of stirring and heating. Specify appropriate amounts for each ingredient, as well as optimal mixing temperatures and heating times.
+    // Ingredient targets
+    milkTarget : REAL := 60.0;
+    waterTarget : REAL := 20.0;
+    sugarTarget : REAL := 15.0;
+    cocoaTarget : REAL := 5.0;
 
-Write a self-contained program in IEC 61131-3 Structured Text for the sequential control of the mixing process, incorporating typical parameter values such as stirring speed, temperature control, and time duration. Ensure the program follows ISA-88 principles, with clear logic for controlling the heating and blending phases. Discuss the challenges in scaling and optimizing the control process for industrial production.
+    // Process parameters
+    mixTemp : REAL := 70.0;
+    stirSpeed : INT := 200;
+    mixDuration : TIME := T#10m;
 
+    // Sensor inputs
+    currentTemp : REAL;
+    milkLevel : REAL;
+    waterLevel : REAL;
+    sugarLevel : REAL;
+    cocoaLevel : REAL;
+
+    // Actuators
+    valveMilk : BOOL := FALSE;
+    valveWater : BOOL := FALSE;
+    valveSugar : BOOL := FALSE;
+    valveCocoa : BOOL := FALSE;
+    heater : BOOL := FALSE;
+    stirrer : BOOL := FALSE;
+
+    // Timer
+    tMix : TON;
+
+    // Output
+    batchComplete : BOOL := FALSE;
+END_VAR
+
+// Main process control
+CASE state OF
+
+    0: // Idle
+        IF milkLevel < milkTarget THEN
+            valveMilk := TRUE;
+        END_IF;
+        IF waterLevel < waterTarget THEN
+            valveWater := TRUE;
+        END_IF;
+        IF sugarLevel < sugarTarget THEN
+            valveSugar := TRUE;
+        END_IF;
+        IF cocoaLevel < cocoaTarget THEN
+            valveCocoa := TRUE;
+        END_IF;
+
+        IF milkLevel >= milkTarget AND waterLevel >= waterTarget AND
+           sugarLevel >= sugarTarget AND cocoaLevel >= cocoaTarget THEN
+            valveMilk := FALSE;
+            valveWater := FALSE;
+            valveSugar := FALSE;
+            valveCocoa := FALSE;
+            state := 1;
+        END_IF;
+
+    1: // Heating
+        heater := TRUE;
+        IF currentTemp >= mixTemp THEN
+            heater := FALSE;
+            state := 2;
+        END_IF;
+
+    2: // Mixing
+        stirrer := TRUE;
+        tMix(IN := TRUE, PT := mixDuration);
+        IF tMix.Q THEN
+            stirrer := FALSE;
+            tMix(IN := FALSE);
+            state := 3;
+        END_IF;
+
+    3: // Complete
+        batchComplete := TRUE;
+
+END_CASE;

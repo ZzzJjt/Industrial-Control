@@ -1,3 +1,29 @@
-**Mean and StdDev:**
+FUNCTION_BLOCK MeanStdDevCalculator
+VAR_INPUT
+    InputArray : ARRAY[1..100] OF INT;
+END_VAR
+VAR_OUTPUT
+    Mean : REAL;
+    StdDev : REAL;
+END_VAR
+VAR
+    i : INT;
+    Sum : REAL := 0.0;
+    Temp : REAL;
+    VarianceSum : REAL := 0.0;
+END_VAR
 
-Create a self-contained function block in IEC 61131-3 Structured Text to compute both the mean and standard deviation of an input array consisting of 100 integers. Ensure that the function block is modular and includes detailed comments explaining the steps of calculating both statistical measures. Address potential issues related to overflow or precision when handling large datasets, and provide insights into the function block’s applicability within real-time control systems.
+(* Step 1: Calculate the Mean *)
+Sum := 0.0;
+FOR i := 1 TO 100 DO
+    Sum := Sum + REAL(InputArray[i]);
+END_FOR;
+Mean := Sum / 100.0;
+
+(* Step 2: Calculate the Standard Deviation *)
+VarianceSum := 0.0;
+FOR i := 1 TO 100 DO
+    Temp := REAL(InputArray[i]) - Mean; (* Difference from mean *)
+    VarianceSum := VarianceSum + Temp * Temp; (* Sum of squared differences *)
+END_FOR;
+StdDev := SQRT(VarianceSum / 99.0); (* Sample standard deviation *)

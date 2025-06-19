@@ -1,7 +1,58 @@
-**Interlock Gas Wellhead:**
+FUNCTION_BLOCK SubseaWellheadInterlocks
+VAR_INPUT
+    PT_101 : REAL; // Pressure sensor reading in psi
+    TT_101 : REAL; // Temperature sensor reading in °C
+    FT_101 : REAL; // Flow rate sensor reading in L/min
+    RESET_Button : BOOL; // Manual reset button state
+END_VAR
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement emergency interlocks for a subsea gas wellhead. The program should monitor critical parameters such as wellhead pressure, temperature, and flow rates using pressure transmitters (PT), temperature transmitters (TT), and flow meters (FT). The interlock system should immediately trigger emergency shutdown procedures if any of these parameters exceed predefined safety limits.
+VAR_OUTPUT
+    MV_101_Close : BOOL; // Command to close master valve MV-101
+    SHUTDOWN : BOOL; // Full shutdown command
+END_VAR
 
-The program should include logic for closing the master valve (MV-101) if wellhead pressure exceeds 1500 psi, or if flow rate drops below the minimum threshold, indicating a potential leak. Additionally, integrate temperature monitoring to shut down the system if the temperature exceeds 120°C. Incorporate safety features such as automatic reset prevention, ensuring that manual intervention is required to restart the system after an emergency shutdown.
+VAR
+    ShutdownActive : BOOL; // Flag indicating if a shutdown has occurred
+END_VAR
 
-Discuss the critical role of emergency interlocks in subsea gas wellhead operations, particularly in preventing catastrophic failures due to pressure, temperature, or flow anomalies.
+// Constants for process limits
+CONSTANT
+    OVERPRESSURE_LIMIT : REAL := 1500.0; // Overpressure limit in psi
+    MIN_FLOW_RATE : REAL := 100.0; // Minimum acceptable flow rate in L/min
+    OVERTEMPERATURE_LIMIT : REAL := 120.0; // Overtemperature limit in °C
+END_CONSTANT
+
+// Main execution logic
+MV_101_Close := FALSE;
+SHUTDOWN := FALSE;
+
+IF NOT ShutdownActive THEN
+    // Overpressure protection
+    IF PT_101 > OVERPRESSURE_LIMIT THEN
+        MV_101_Close := TRUE;
+        SHUTDOWN := TRUE;
+        ShutdownActive := TRUE;
+    END_IF;
+
+    // Low flow rate protection
+    IF FT_101 < MIN_FLOW_RATE THEN
+        MV_101_Close := TRUE;
+        SHUTDOWN := TRUE;
+        ShutdownActive := TRUE;
+    END_IF;
+
+    // Overtemperature protection
+    IF TT_101 > OVERTEMPERATURE_LIMIT THEN
+        MV_101_Close := TRUE;
+        SHUTDOWN := TRUE;
+        ShutdownActive := TRUE;
+    END_IF;
+ELSE
+    // Allow manual reset only if all conditions are normal
+    IF RESET_Button AND (PT_101 <= OVERPRESSURE_LIMIT) AND (FT_101 >= MIN_FLOW_RATE) AND (TT_101 <= OVERTEMPERATURE_LIMIT) THEN
+        ShutdownActive := FALSE;
+    END_IF;
+END_IF;
+
+
+

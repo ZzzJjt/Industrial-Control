@@ -1,3 +1,15 @@
-**Interlock Prilling Station:**
+VAR
+    TT_101 : REAL;
+    OverTempSetpoint : REAL := 120.0;
+    ESD_OverTemp : BOOL := FALSE;
+    MELT_FEED_STOP : BOOL := FALSE;
+END_VAR
 
-Develop a complete list of interlocks required for a prilling station handling ammonium nitrates. The interlocks should cover critical safety and operational aspects to ensure the safe and efficient operation of the prilling process. Discuss the importance of implementing these interlocks in ammonium nitrate production for both safety and compliance with regulatory standards.
+(* Overtemperature Interlock *)
+IF TT_101 > OverTempSetpoint THEN
+    ESD_OverTemp := TRUE;
+END_IF;
+
+IF ESD_OverTemp THEN
+    MELT_FEED_STOP := TRUE;
+END_IF;

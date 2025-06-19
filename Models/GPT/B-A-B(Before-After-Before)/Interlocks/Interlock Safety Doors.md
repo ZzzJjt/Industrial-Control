@@ -1,7 +1,47 @@
-**Interlock Safety Doors:**
+FUNCTION_BLOCK FB_SafetyDoorInterlock
+VAR_INPUT
+    DOOR_1_CLOSED     : BOOL;
+    DOOR_2_CLOSED     : BOOL;
+    DOOR_3_CLOSED     : BOOL;
+    StartCommand      : BOOL;     // Operator attempts to start reactor
+    ManualReset       : BOOL;     // Manual reset button
+END_VAR
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement interlocks for safety doors in a chemical reactor. The program should monitor the status of the safety doors and ensure that the reactor remains in a safe state whenever any door is open.
+VAR_OUTPUT
+    ReactorRunning    : BOOL;
+    EmergencyShutdown : BOOL;
+    AllowStart        : BOOL;
+    Shutdown_Heater   : BOOL;
+    Shutdown_Pump     : BOOL;
+    Shutdown_Stirrer  : BOOL;
+END_VAR
 
-The interlock logic should prevent the reactor from starting or continuing operation if any safety door is not securely closed. Additionally, if a safety door is opened during reactor operation, the program should immediately trigger an emergency shutdown sequence, including deactivating the reactor and stopping any hazardous processes.
+VAR
+    InterlockTripped  : BOOL := FALSE;
+END_VAR
 
-This interlock ensures that the reactor only operates when all safety doors are securely closed, providing an essential safeguard against accidental exposure to hazardous conditions. Discuss the importance of safety door interlocks in preventing operator access to dangerous environments and ensuring compliance with safety standards in chemical processing.
+// --- Check door status ---
+AllowStart := DOOR_1_CLOSED AND DOOR_2_CLOSED AND DOOR_3_CLOSED AND NOT InterlockTripped;
+
+// --- Startup logic ---
+IF StartCommand AND AllowStart THEN
+    ReactorRunning := TRUE;
+END_IF
+
+// --- Runtime interlock check ---
+IF ReactorRunning AND (NOT DOOR_1_CLOSED OR NOT DOOR_2_CLOSED OR NOT DOOR_3_CLOSED) THEN
+    EmergencyShutdown := TRUE;
+    ReactorRunning := FALSE;
+    InterlockTripped := TRUE;
+END_IF
+
+// --- Force shutdown of hazardous components ---
+Shutdown_Heater := NOT ReactorRunning;
+Shutdown_Pump := NOT ReactorRunning;
+Shutdown_Stirrer := NOT ReactorRunning;
+
+// --- Manual reset logic ---
+IF ManualReset AND AllowStart THEN
+    EmergencyShutdown := FALSE;
+    InterlockTripped := FALSE;
+END_IF

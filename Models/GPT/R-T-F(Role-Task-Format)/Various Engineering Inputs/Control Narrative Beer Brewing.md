@@ -1,6 +1,10 @@
-**Control Narrative Beer Brewing:**
+IF TU-404 < 200 NTU FOR 30 s THEN ClearWortReady := TRUE
 
-Create a control narrative for beer brewing including concrete setpoints and ranges.
-
-Create a detailed explanation of the Lautering process (Section 4). Include the equipment and instrumentation needed. Provide a list of the steps to execute.
+IF LT-401 < 60% THEN
+    Close V-403
+ELSIF LT-401 > 80% THEN
+    Close V-403
+ELSE
+    Open V-403
+END_IF
 

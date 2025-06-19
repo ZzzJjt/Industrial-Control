@@ -1,16 +1,126 @@
-**Interlock Gas Turbine:**
+FUNCTION_BLOCK FB_GasTurbineInterlock
+VAR_INPUT
+    // Sensor Inputs
+    rExhaustTemp: REAL;          // TT-EXH1 – Exhaust Temp (°C)
+    rSpeedRPM: REAL;             // ST-SPD1 – Rotor Speed (RPM)
+    rLubeOilPressure: REAL;      // PT-LOP1 – Lube Oil Pressure (bar)
+    rVibration: REAL;            // VT-VIB1 – Vibration (mm/s RMS)
+    bFlameDetected: BOOL;        // FG-FLM1 – Flame present?
+    rFuelGasPressure: REAL;      // PT-FGP1 – Fuel Gas Pressure (bar)
+    rCoolingWaterFlow: REAL;     // FT-CWF1 – Cooling Water Flow (%)
+    rCompressorDP: REAL;         // DP-CMP1 – Compressor Differential Pressure
+    rCombustionChamberPress: REAL; // PT-CMB1 – Combustion Chamber Pressure (bar)
+    bEmergencyStop: BOOL;        // ESD_PB1 – Manual Emergency Stop
+END_VAR
 
-Develop a complete list of interlocks required for a gas turbine in a power plant. These interlocks are essential for ensuring safe operation and protecting the equipment from damage or failure. The list includes critical safety conditions and the corresponding actions to prevent hazardous situations:
+VAR_OUTPUT
+    // Actuator/Control Outputs
+    bTripTurbine: BOOL;              // Emergency shutdown signal
+    bFuelValve_Close: BOOL;          // Close fuel valve
+    bOpenReliefValve: BOOL;          // Open combustion chamber PRV
+    bActivateAntiSurgeValve: BOOL;   // Open anti-surge valve
+    bStartCooldownSequence: BOOL;    // Begin controlled cooldown
+    bAlarmTriggered: BOOL;           // General alarm output
+    bLocal_Alarm: BOOL;              // Local alarm activation
+    bSCADA_Alarm: BOOL;              // SCADA notification
+    bIsolateFuel: BOOL;              // Cut off all fuel supply
+    bInitiatePurge: BOOL;            // Start purge sequence after flame failure
+END_VAR
 
-	1.	Overtemperature Interlock: Shutdown the turbine if the exhaust gas temperature exceeds a predefined limit (e.g., 650°C) to prevent thermal damage to turbine components.
-	2.	Overspeed Interlock: Trigger an emergency stop if the turbine rotor speed exceeds its maximum operating threshold (e.g., 105% of nominal speed), ensuring the protection of mechanical components.
-	3.	Overpressure Interlock: Open the pressure relief valve if the pressure in the combustion chamber exceeds safe levels (e.g., 30 bar) to prevent pressure-related damage or explosion.
-	4.	Low Lubrication Pressure Interlock: Stop the turbine if lubrication oil pressure falls below the safe operating limit (e.g., 1.5 bar) to avoid bearing or rotor damage due to insufficient lubrication.
-	5.	High Vibration Interlock: Shut down the turbine if excessive vibration is detected (e.g., vibration amplitude exceeds 10 mm/s), which could indicate mechanical imbalance or impending failure.
-	6.	Flame Failure Interlock: Immediately stop fuel flow and trigger an alarm if the flame in the combustion chamber extinguishes, preventing unburned fuel accumulation and potential explosion risks.
-	7.	Fuel Gas Pressure Low Interlock: Close the fuel valve and stop the turbine if the fuel gas pressure drops below the required minimum (e.g., 2 bar) to avoid incomplete combustion.
-	8.	Cooling Water Flow Interlock: Shutdown the turbine if cooling water flow falls below the minimum safe flow rate (e.g., 200 L/min), ensuring the turbine components do not overheat.
-	9.	Compressor Surge Interlock: Activate a bypass valve or reduce load if the compressor experiences a surge condition, preventing damage to the compressor blades.
-	10.	Emergency Stop Interlock: Provide a manual emergency stop button that immediately shuts down the turbine and isolates fuel supply in case of any critical malfunction.
+VAR
+    bAnyCriticalFault: BOOL;
+END_VAR
 
-These interlocks play a crucial role in protecting the gas turbine from overheating, overpressure, and mechanical failure, ensuring safe and efficient operation in a power plant environment. Discuss how these interlocks are integrated into the overall turbine control system and their importance in maintaining safety and operational integrity.
+// Initialize outputs at start of scan
+bTripTurbine := FALSE;
+bFuelValve_Close := FALSE;
+bOpenReliefValve := FALSE;
+bActivateAntiSurgeValve := FALSE;
+bStartCooldownSequence := FALSE;
+bAlarmTriggered := FALSE;
+bLocal_Alarm := FALSE;
+bSCADA_Alarm := FALSE;
+bIsolateFuel := FALSE;
+bInitiatePurge := FALSE;
+
+// Detect if any critical condition exists
+bAnyCriticalFault :=
+    rExhaustTemp > 650 OR
+    rSpeedRPM > 105.0 OR
+    rLubeOilPressure < 1.5 OR
+    rVibration > 7.5 OR
+    NOT bFlameDetected OR
+    rFuelGasPressure < 2.0 OR
+    rCoolingWaterFlow < 80.0 OR
+    bEmergencyStop;
+
+// General emergency response if any fault or E-stop
+IF bAnyCriticalFault THEN
+    bAlarmTriggered := TRUE;
+    bLocal_Alarm := TRUE;
+    bSCADA_Alarm := TRUE;
+    bIsolateFuel := TRUE;
+    bTripTurbine := TRUE;
+END_IF;
+
+// IL01 – Overtemperature Protection
+IF rExhaustTemp > 650 THEN
+    bStartCooldownSequence := TRUE;
+    bTripTurbine := TRUE;
+END_IF;
+
+// IL02 – Overspeed Protection
+IF rSpeedRPM > 105.0 THEN
+    bTripTurbine := TRUE;
+END_IF;
+
+// IL03 – Low Lube Oil Pressure
+IF rLubeOilPressure < 1.5 THEN
+    bTripTurbine := TRUE;
+END_IF;
+
+// IL04 – High Vibration
+IF rVibration > 7.5 THEN
+    bTripTurbine := TRUE;
+END_IF;
+
+// IL05 – Flame Failure
+IF NOT bFlameDetected THEN
+    bIsolateFuel := TRUE;
+    bInitiatePurge := TRUE;
+    bTripTurbine := TRUE;
+END_IF;
+
+// IL06 – Low Fuel Gas Pressure
+IF rFuelGasPressure < 2.0 THEN
+    bFuelValve_Close := TRUE;
+    bTripTurbine := TRUE;
+END_IF;
+
+// IL07 – Low Cooling Water Flow
+IF rCoolingWaterFlow < 80.0 THEN
+    bStartCooldownSequence := TRUE;
+    bTripTurbine := TRUE;
+END_IF;
+
+// IL08 – Compressor Surge Detection
+IF rCompressorDP > 15.0 AND rCombustionChamberPress < 20.0 THEN
+    bActivateAntiSurgeValve := TRUE;
+END_IF;
+
+// IL09 – Overpressure in Combustion Chamber
+IF rCombustionChamberPress > 30.0 THEN
+    bOpenReliefValve := TRUE;
+    bTripTurbine := TRUE;
+END_IF;
+
+// IL10 – Emergency Stop
+IF bEmergencyStop THEN
+    bTripTurbine := TRUE;
+    bIsolateFuel := TRUE;
+    bFuelValve_Close := TRUE;
+    bOpenReliefValve := TRUE;
+    bLocal_Alarm := TRUE;
+    bSCADA_Alarm := TRUE;
+    bInitiatePurge := TRUE;
+END_IF;

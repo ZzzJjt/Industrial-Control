@@ -1,6 +1,43 @@
-**Conveyor Belt Control Using 61131-3 Structured Text:**
+PROGRAM ConveyorControl
+VAR
+    // Mode selection (set externally)
+    AutoMode         : BOOL; // TRUE for automatic mode
+    ManualMode       : BOOL; // TRUE for manual mode
 
-Write a self-contained 61131-3 structured text program (not a function block) to control a conveyor belt system with three stations, where each station allows a user to stop the conveyor. The system should automatically start and stop based on input from five sensors that detect the presence of objects on the conveyor. The conveyor belt speed must be maintained at 2 meters per second. The program should manage both manual and automatic control modes while ensuring safe and efficient operation.
+    // Operator stations — each can stop the conveyor
+    StationStop1     : BOOL;
+    StationStop2     : BOOL;
+    StationStop3     : BOOL;
 
-Implement logic that prioritizes safety by ensuring the conveyor stops if any station triggers a stop command or if an object is not detected by the sensors.
+    // Item detection sensors
+    Sensor1          : BOOL;
+    Sensor2          : BOOL;
+    Sensor3          : BOOL;
+    Sensor4          : BOOL;
+    Sensor5          : BOOL;
 
+    // Conveyor outputs
+    ConveyorRunning  : BOOL := FALSE; // TRUE when conveyor is running
+    ConveyorSpeed    : REAL := 2.0;   // Logical constant speed in m/s (not regulated here)
+END_VAR
+
+// 🚨 Step 1: Prioritize manual station stop buttons
+IF StationStop1 OR StationStop2 OR StationStop3 THEN
+    ConveyorRunning := FALSE;
+
+// 🤖 Step 2: Automatic mode — only run if all sensors detect objects
+ELSIF AutoMode THEN
+    IF Sensor1 AND Sensor2 AND Sensor3 AND Sensor4 AND Sensor5 THEN
+        ConveyorRunning := TRUE;
+    ELSE
+        ConveyorRunning := FALSE; // Stop if any item is missing
+    END_IF;
+
+// 🧑‍🔧 Step 3: Manual mode — always run unless stopped manually (handled above)
+ELSIF ManualMode THEN
+    ConveyorRunning := TRUE;
+
+// 🟡 Step 4: If no valid mode selected, ensure safety
+ELSE
+    ConveyorRunning := FALSE;
+END_IF;

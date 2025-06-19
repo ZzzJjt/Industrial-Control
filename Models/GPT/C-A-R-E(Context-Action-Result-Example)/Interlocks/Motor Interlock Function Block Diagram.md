@@ -1,8 +1,30 @@
-**Motor Interlock Function Block Diagram:**
+FUNCTION_BLOCK MotorInterlock
+VAR_INPUT
+    Equipment1Running : BOOL;   (* TRUE if equipment 1 is running *)
+    Equipment2Running : BOOL;   (* TRUE if equipment 2 is running *)
+    Equipment3Running : BOOL;   (* TRUE if equipment 3 is running *)
+END_VAR
 
-Design a motor interlock as a function block diagram that prevents the motor from starting while other associated equipment is still running. The interlock should monitor the operational status of surrounding equipment and block the motor start command if any equipment is still active. Include inputs from sensors or status indicators and outputs that control the motor start circuit.
+VAR_OUTPUT
+    AllowStart : BOOL;          (* TRUE only when all equipment is stopped *)
+END_VAR
 
-Provide the implementation of the MotorInterlock function block in IEC 61131-3 Structured Text. This function block should check the statuses of relevant equipment (e.g., EquipmentRunning), and if all equipment is stopped, it should allow the motor to start by setting the output to TRUE. If any equipment is still running, the output should remain FALSE, preventing the motor from starting.
+(* === Interlock Logic === *)
+AllowStart := NOT Equipment1Running AND NOT Equipment2Running AND NOT Equipment3Running;
 
-Discuss the role of motor interlocks in industrial safety and how this logic prevents premature or unsafe motor operation.
 
+VAR
+    MixMotorInterlock : MotorInterlock;
+    AgitatorRunning   : BOOL;
+    FeedPumpRunning   : BOOL;
+    ValveRunning      : BOOL;
+    MotorCanStart     : BOOL;
+END_VAR
+
+(* Apply input conditions *)
+MixMotorInterlock.Equipment1Running := AgitatorRunning;
+MixMotorInterlock.Equipment2Running := FeedPumpRunning;
+MixMotorInterlock.Equipment3Running := ValveRunning;
+
+(* Output *)
+MotorCanStart := MixMotorInterlock.AllowStart;

@@ -1,6 +1,60 @@
-**Batch Adhesive:**
+FUNCTION_BLOCK FB_ReactionStep
+VAR_INPUT
+    Start           : BOOL;
+    TargetTemp      : REAL := 85.0;
+    MixSpeed        : INT := 600;
+    HeatHoldTime    : TIME := T#10m;
+    MixTime         : TIME := T#15m;
+    HoldTime        : TIME := T#20m;
+    CurrentTemp     : REAL;
+END_VAR
 
-Develop an ISA-88 batch control recipe for the production of adhesive, detailing the stages involved in the process. Create a self-contained program in IEC 61131-3 Structured Text to manage the sequential control of step B.2, Reaction, with specific process parameters and timers. Include the necessary control logic to call methods corresponding to each phase of the reaction, ensuring that transitions between steps are managed through appropriate conditions and timer values.
+VAR_OUTPUT
+    Done            : BOOL;
+    StepStatus      : STRING[50];
+END_VAR
 
-Incorporate detailed content for calling the methods that govern specific operations, such as heating, mixing, and maintaining the reaction environment. Additionally, discuss the integration of ISA-88 standards in batch process control, focusing on how the structured text program facilitates modularity and flexibility in controlling the adhesive production process.
+VAR
+    Phase           : INT := 0;
+    HeatingTimer    : TON;
+    MixingTimer     : TON;
+    HoldingTimer    : TON;
+END_VAR
 
+
+CASE Phase OF
+0: // Wait for start trigger
+    IF Start THEN
+        StepStatus := 'Initializing Reaction Phase';
+        Phase := 1;
+    END_IF
+
+1: // Start Heating
+    StepStatus := 'Heating to Target Temperature';
+    HeatingTimer(IN := CurrentTemp >= TargetTemp, PT := HeatHoldTime);
+    IF HeatingTimer.Q THEN
+        HeatingTimer(IN := FALSE);
+        Phase := 2;
+    END_IF
+
+2: // Start Mixing
+    StepStatus := 'Mixing at Constant Speed';
+    (* Assume SetMixerSpeed(MixSpeed) is called in hardware layer *)
+    MixingTimer(IN := TRUE, PT := MixTime);
+    IF MixingTimer.Q THEN
+        MixingTimer(IN := FALSE);
+        Phase := 3;
+    END_IF
+
+3: // Hold Reaction
+    StepStatus := 'Holding Reaction Conditions';
+    HoldingTimer(IN := TRUE, PT := HoldTime);
+    IF HoldingTimer.Q THEN
+        HoldingTimer(IN := FALSE);
+        Phase := 4;
+    END_IF
+
+4: // Complete
+    StepStatus := 'Reaction Step Complete';
+    Done := TRUE;
+END_CASE

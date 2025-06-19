@@ -1,7 +1,41 @@
-**Ratio Control Mixing:**
+PROGRAM RatioControl
+VAR
+    // Inputs
+    Flow_A_PV : REAL; // Measured flow rate of Reactant A
+    Flow_B_PV : REAL; // Measured flow rate of Reactant B
 
-Develop a self-contained IEC 61131-3 Structured Text program (not a function block) to implement ratio control for mixing two reactants in a 2:1 ratio. The program should maintain the desired ratio between the two reactants by adjusting their flow rates dynamically, ensuring that for every two parts of reactant A, one part of reactant B is added.
+    // Outputs
+    Flow_B_SP : REAL; // Setpoint for Reactant B (output)
 
-Include logic to monitor the flow rates of both reactants and adjust one flow rate relative to the other to maintain the 2:1 ratio. The program should also handle any disturbances or variations in flow, adjusting the control signals to correct for deviations from the target ratio. Discuss the importance of ratio control in maintaining the desired chemical composition and the impact of disturbances on the mixing process.
+    // Constants
+    Ratio_Setpoint : REAL := 2.0;     // Desired ratio A:B = 2:1
+    Tolerance : REAL := 0.05;         // Allowable deviation
 
+    // Internal variables
+    Actual_Ratio : REAL;
+    Error : REAL;
+    Deviation_Flag : BOOL;            // Flag to indicate deviation from setpoint
+END_VAR
 
+// Calculate actual ratio (A:B)
+IF Flow_B_PV > 0.0 THEN
+    Actual_Ratio := Flow_A_PV / Flow_B_PV;
+ELSE
+    Actual_Ratio := 0.0;
+END_IF;
+
+// Compute required flow setpoint for Reactant B
+Flow_B_SP := Flow_A_PV / Ratio_Setpoint;
+
+// Optional: Calculate ratio error for monitoring
+Error := Actual_Ratio - Ratio_Setpoint;
+
+// Check if the error exceeds the allowable tolerance
+IF ABS(Error) > Tolerance THEN
+    Deviation_Flag := TRUE;           // Set flag indicating deviation
+ELSE
+    Deviation_Flag := FALSE;          // Clear flag
+END_IF;
+
+// Deviation_Flag can be used to trigger alerts or corrective actions
+// Example: IF Deviation_Flag THEN AlertDeviation(); END_IF; // Placeholder function to handle deviation

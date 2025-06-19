@@ -1,3 +1,53 @@
-**OPC UA Client Implementation Using C and IEC 61131-3 Structured Text:**
+#include <open62541/client_config_default.h>
+#include <open62541/client_highlevel.h>
+#include <string.h>
+#include <stdint.h>
 
-Develop C-code for an OPC UA client, then wrap it into an IEC 61131-based function block written in structured text (ST). The function block should have the following input pins: Execute (type: BOOL), ServerUrl (type: STRING[255]), and Timeout (type: TIME). The output pins should include Done (type: BOOL), Busy (type: BOOL), Error (type: BOOL), and ErrorID (type: DWORD). In your explanation, describe how the C-code interfaces with the OPC UA server, how the function block manages communication with the server, and how error handling is implemented. Provide details on how to integrate this function block within an IEC 61131-3 environment for reliable client-server communication.
+// Client context
+static UA_Client* client = NULL;
+static UA_StatusCode last_status = UA_STATUSCODE_GOOD;
+
+// Initialize client and connect to server
+int32_t opcua_connect(const char* server_url, int32_t timeout_ms) {
+    if (client != NULL) {
+        return UA_STATUSCODE_BADSESSIONACTIVE; // Client already initialized
+    }
+
+    client = UA_Client_new();
+    if (!client) {
+        return UA_STATUSCODE_BADOUTOFMEMORY;
+    }
+
+    UA_ClientConfig_setDefault(UA_Client_getConfig(client));
+    UA_ClientConfig* config = UA_Client_getConfig(client);
+    config->timeout = timeout_ms;
+
+    last_status = UA_Client_connect(client, server_url);
+    if (last_status != UA_STATUSCODE_GOOD) {
+        UA_Client_delete(client);
+        client = NULL;
+        return last_status;
+    }
+
+    return UA_STATUSCODE_GOOD;
+}
+
+// Disconnect and clean up
+int32_t opcua_disconnect(void) {
+    if (client == NULL) {
+        return UA_STATUSCODE_BADSESSIONCLOSED;
+    }
+
+    last_status = UA_Client_disconnect(client);
+    UA_Client_delete(client);
+    client = NULL;
+    return last_status;
+}
+
+// Get connection status
+int32_t opcua_get_status(void) {
+    if (client == NULL) {
+        return UA_STATUSCODE_BADSESSIONCLOSED;
+    }
+    return last_status;
+}

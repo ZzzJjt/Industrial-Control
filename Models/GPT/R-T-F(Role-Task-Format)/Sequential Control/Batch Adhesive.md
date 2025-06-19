@@ -1,6 +1,65 @@
-**Batch Adhesive:**
+VAR
+    // Step control
+    ReactionStep      : INT := 0;           // 0: Idle, 1: Heat, 2: Mix, 3: Hold, 4: Complete
+    StepComplete      : BOOL := FALSE;
 
-Develop an ISA-88 batch control recipe for the production of adhesive, detailing the stages involved in the process. Create a self-contained program in IEC 61131-3 Structured Text to manage the sequential control of step B.2, Reaction, with specific process parameters and timers. Include the necessary control logic to call methods corresponding to each phase of the reaction, ensuring that transitions between steps are managed through appropriate conditions and timer values.
+    // Process parameters
+    TargetTemperature : REAL := 85.0;       // °C
+    MixingSpeed       : INT := 120;         // RPM
+    HoldTime          : TIME := T#15m;      // Reaction hold duration
 
-Incorporate detailed content for calling the methods that govern specific operations, such as heating, mixing, and maintaining the reaction environment. Additionally, discuss the integration of ISA-88 standards in batch process control, focusing on how the structured text program facilitates modularity and flexibility in controlling the adhesive production process.
+    // Sensors and status
+    CurrentTemperature: REAL;
+    HeatingComplete   : BOOL := FALSE;
+    MixingActive      : BOOL := FALSE;
 
+    // Timer for hold phase
+    HoldTimer         : TON;
+    HoldStart         : BOOL := FALSE;
+
+    // Method interfaces (assumed implemented elsewhere)
+    // PROCEDURE StartHeating(TargetTemp: REAL);
+    // PROCEDURE StartMixing(Speed: INT);
+    // PROCEDURE StopMixing();
+END_VAR
+
+// === Step B.2: Reaction ===
+
+CASE ReactionStep OF
+
+    0: // Idle - waiting for trigger
+        StepComplete := FALSE;
+        // ReactionStep := 1; // Set externally when ready to start
+
+    1: // Start heating to target temperature
+        StartHeating(TargetTemp := TargetTemperature);
+        IF CurrentTemperature >= TargetTemperature THEN
+            HeatingComplete := TRUE;
+            ReactionStep := 2;
+        END_IF;
+
+    2: // Begin mixing at specified speed
+        StartMixing(Speed := MixingSpeed);
+        MixingActive := TRUE;
+        ReactionStep := 3;
+
+    3: // Hold time under controlled conditions
+        IF NOT HoldStart THEN
+            HoldTimer(IN := TRUE, PT := HoldTime);
+            HoldStart := TRUE;
+        END_IF;
+
+        HoldTimer(IN := TRUE); // Continue timing
+        IF HoldTimer.Q THEN
+            StopMixing();
+            MixingActive := FALSE;
+            ReactionStep := 4;
+        END_IF;
+
+    4: // Complete
+        HoldTimer(IN := FALSE);
+        HoldStart := FALSE;
+        StepComplete := TRUE;
+        // ReactionStep := 0; // Reset externally if needed
+
+END_CASE;

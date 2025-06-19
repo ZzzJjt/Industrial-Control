@@ -1,12 +1,74 @@
-**Shutdown Steel Production:**
+VAR
+    Step : INT := 4; // Current phase of shutdown
 
-Develop a comprehensive list of steps for the controlled shutdown of a steel production facility. Include key stages such as reducing furnace temperature, controlling gas flow rates, and maintaining safe oxygen levels throughout the shutdown process.
+    // Furnace
+    CurrentTemp : REAL;
+    TempTarget : REAL := 400.0;
 
-Provide a detailed control narrative for steps 4 to 6 of the shutdown sequence, specifying concrete ranges and setpoints for variables such as temperature, gas flow, and oxygen levels.
+    // Gas Flow
+    GasFlowSetpoint : REAL;
+    GasFlowCurrent : REAL;
 
-Write a self-contained IEC 61131-3 Structured Text program based on this control narrative, ensuring proper sequencing and safety protocols.
+    // Oxygen
+    O2FlowSetpoint : REAL;
+    O2FlowCurrent : REAL;
 
-Additionally, create a function in IEC 61131-3 to gradually reduce the fuel gas flow rate to the furnace burners over a period of 12 hours. This function should incorporate timing and safety checks to ensure smooth transitions.
+    // Timers
+    ShutdownTimer : TON;
+    GasRampTimer : TON;
 
-Lastly, write an IEC 61131-3 function for adjusting the oxygen supply to the burners to maintain a precise fuel-to-air ratio of 1:2.5 during the shutdown. Ensure the function is adaptable to fluctuations in gas flow and temperature, and include safeguards for maintaining combustion efficiency.
+    // Interlocks
+    SafeTempReached : BOOL := FALSE;
+    GasRampComplete : BOOL := FALSE;
+    ShutdownComplete : BOOL := FALSE;
+END_VAR
 
+
+FUNCTION_BLOCK FB_GasRampDown
+VAR_INPUT
+    StartTime : TIME; // e.g., T#0s
+    Duration : TIME := T#12h;
+END_VAR
+VAR_OUTPUT
+    Setpoint : REAL;
+END_VAR
+VAR
+    ElapsedTime : TIME;
+    PercentRemaining : REAL;
+END_VAR
+
+ElapsedTime := TIME() - StartTime;
+IF ElapsedTime < Duration THEN
+    PercentRemaining := 1.0 - (REAL_TO_TIME(ElapsedTime) / REAL_TO_TIME(Duration));
+    Setpoint := MAX(0.0, MIN(1.0, PercentRemaining)); // Clamp between 0 and 1
+ELSE
+    Setpoint := 0.0;
+END_IF
+
+FUNCTION_BLOCK FB_OxygenAdjust
+VAR_INPUT
+    FuelFlow : REAL;        // Actual gas flow in Nm³/h
+    Temp : REAL;            // Reactor temp in °C
+END_VAR
+VAR_OUTPUT
+    O2Setpoint : REAL;
+    Alarm : BOOL;
+END_VAR
+VAR CONSTANT
+    RATIO : REAL := 2.5;    // Target fuel-to-air ratio
+    O2_MAX : REAL := 500.0; // Max oxygen flow Nm³/h
+    O2_MIN : REAL := 20.0;
+END_VAR
+
+O2Setpoint := FuelFlow * RATIO;
+
+// Safety limits
+IF O2Setpoint > O2_MAX THEN
+    O2Setpoint := O2_MAX;
+    Alarm := TRUE;
+ELSIF O2Setpoint < O2_MIN THEN
+    O2Setpoint := O2_MIN;
+    Alarm := TRUE;
+ELSE
+    Alarm := FALSE;
+END_IF

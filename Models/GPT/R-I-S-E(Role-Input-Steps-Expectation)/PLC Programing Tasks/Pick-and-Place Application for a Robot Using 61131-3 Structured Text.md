@@ -1,22 +1,100 @@
-**Pick-and-Place Application for a Robot Using 61131-3 Structured Text:**
+FUNCTION_BLOCK PickAndPlaceRobot
+VAR_INPUT
+    BtnManual     : BOOL; // Manual mode selection
+    BtnAuto       : BOOL; // Auto mode selection (also triggers auto cycle)
+    CmdClip       : BOOL; // Manual command: pick from Conveyor A
+    CmdTransfer   : BOOL; // Manual command: move to Conveyor B
+    CmdRelease    : BOOL; // Manual command: release on Conveyor B
+END_VAR
 
-Write a PLC program in structured text (ST) according to IEC 61131-3 standards for a pick-and-place robotic application with two conveyors, following the process described below:
+VAR_OUTPUT
+    DoClip        : BOOL; // Actuate clip action
+    DoTransfer    : BOOL; // Actuate transfer motion
+    DoRelease     : BOOL; // Actuate release motion
+END_VAR
 
-Process Description:
+VAR
+    ManualMode    : BOOL := FALSE;
+    AutoMode      : BOOL := FALSE;
+    AutoTrigger   : BOOL := FALSE;
+    PrevBtnAuto   : BOOL := FALSE;
+    State         : INT := 0; // 0=Clip, 1=Wait, 2=Release
+    AutoTimer     : TON; // Timer for 2s delay
+END_VAR
 
-The system operates in two modes: Manual Mode and Auto Mode. These modes are interlocked, meaning only one can be active at any time.
+// --- Mode Selection Interlock ---
+IF BtnManual THEN
+    ManualMode := TRUE;
+    AutoMode := FALSE;
+ELSIF BtnAuto THEN
+    AutoMode := TRUE;
+    ManualMode := FALSE;
+END_IF
 
-	1.	Manual Mode:
-	•	When the Manual button is pressed, the robotic arm will execute the following steps in response to individual manual commands:
-	•	Clip: Clip the product from conveyor A.
-	•	Transfer: Move the product to conveyor B.
-	•	Release: Release the product onto conveyor B, allowing it to be carried away.
-	2.	Auto Mode:
-	•	When the Auto button is pressed, the robotic arm will execute the entire pick-and-place process automatically:
-	•	Clip: Clip the product from conveyor A and hold it.
-	•	Transfer: Transfer the product to conveyor B (this action takes 2 seconds).
-	•	Release: Release the product onto conveyor B.
-	•	The auto process completes after one cycle, but can be re-triggered by pressing the Auto button again.
+// --- Manual Mode Logic ---
+IF ManualMode THEN
+    IF CmdClip THEN
+        DoClip := TRUE;
+    ELSE
+        DoClip := FALSE;
+    END_IF;
 
-The system should ensure that manual and auto modes cannot operate simultaneously, using interlocking logic to prevent conflicts between the two modes.
+    IF CmdTransfer THEN
+        DoTransfer := TRUE;
+    ELSE
+        DoTransfer := FALSE;
+    END_IF;
 
+    IF CmdRelease THEN
+        DoRelease := TRUE;
+    ELSE
+        DoRelease := FALSE;
+    END_IF;
+ELSE
+    // Clear outputs if not in manual
+    DoClip := FALSE;
+    DoTransfer := FALSE;
+    DoRelease := FALSE;
+END_IF
+
+// --- Auto Mode Rising Edge Detection ---
+IF AutoMode AND (BtnAuto AND NOT PrevBtnAuto) THEN
+    AutoTrigger := TRUE;
+END_IF
+PrevBtnAuto := BtnAuto;
+
+// --- Auto Mode Logic with State Machine ---
+IF AutoMode AND AutoTrigger THEN
+    CASE State OF
+        0: // Step 1: Clip
+            DoClip := TRUE;
+            DoTransfer := FALSE;
+            DoRelease := FALSE;
+            State := 1;
+        1: // Step 2: Delay and Transfer
+            DoClip := FALSE;
+            DoTransfer := TRUE;
+            DoRelease := FALSE;
+            AutoTimer(IN := TRUE, PT := T#2s);
+            IF AutoTimer.Q THEN
+                AutoTimer(IN := FALSE);
+                State := 2;
+            END_IF;
+        2: // Step 3: Release
+            DoClip := FALSE;
+            DoTransfer := FALSE;
+            DoRelease := TRUE;
+            AutoTrigger := FALSE;
+            State := 0; // Reset for next cycle
+    END_CASE;
+ELSE
+    // Ensure outputs are off when Auto is idle
+    IF NOT AutoMode THEN
+        DoClip := FALSE;
+        DoTransfer := FALSE;
+        DoRelease := FALSE;
+        AutoTimer(IN := FALSE);
+        State := 0;
+        AutoTrigger := FALSE;
+    END_IF
+END_IF

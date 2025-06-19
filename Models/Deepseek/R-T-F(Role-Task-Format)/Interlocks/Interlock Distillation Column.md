@@ -1,6 +1,45 @@
-**Interlock Distillation Column:**
+PROGRAM DISTILLATION_COLUMN_INTERLOCKS
+VAR_INPUT
+    Execute : BOOL;             // Triggers the diagnostic read
+    PT_101_Value : REAL;        // Pressure transmitter value (psi)
+    TT_101_Value : REAL;        // Temperature transmitter value (°C)
+END_VAR
 
-Develop a P&I diagram in textual notation for a distillation column, detailing the process equipment, instrumentation, control functions, safety interlocks, and piping. Use typical tagnames to represent elements such as the column (C-101), reboiler (E-101), condenser (E-102), level transmitters (LT-101), pressure transmitters (PT-101), and control valves (FV-101). Ensure the notation includes both the control functions and the safety interlocks, specifying their interactions with the piping and instrumentation system.
+VAR_OUTPUT
+    PRV_101_Active : BOOL;      // Pressure relief valve active
+    FV_101_Open : BOOL;         // Feed valve open/close status
+    Reboiler_Valve_Open : BOOL; // Reboiler heating valve open/close status
+END_VAR
 
-Following this, write a self-contained IEC 61131-3 Structured Text program to implement the interlocks of the distillation column. Include high and low limits for critical parameters such as pressure, temperature, and liquid level. For instance, trigger the pressure relief valve if the column pressure exceeds 120 psi (high limit) or shut off the feed valve if the pressure drops below 50 psi (low limit). Similarly, close the reboiler heat supply if the temperature exceeds 180°C. Discuss the role of interlocks in maintaining safe operating conditions within the distillation process.
+// Constants for thresholds
+CONST
+    MAX_PRESSURE : REAL := 120.0; // Maximum allowable pressure (psi)
+    MIN_PRESSURE : REAL := 50.0;  // Minimum allowable pressure (psi)
+    MAX_TEMPERATURE : REAL := 180.0; // Maximum allowable temperature (°C)
+END_CONST
 
+// Main execution logic
+METHOD Execute : BOOL
+BEGIN
+    // Initialize outputs
+    PRV_101_Active := FALSE;
+    FV_101_Open := TRUE;
+    Reboiler_Valve_Open := TRUE;
+
+    // Check pressure conditions
+    IF PT_101_Value > MAX_PRESSURE THEN
+        PRV_101_Active := TRUE; // Activate pressure relief valve
+        FV_101_Open := FALSE;   // Close feed valve to prevent further pressurization
+    ELSIF PT_101_Value < MIN_PRESSURE THEN
+        FV_101_Open := FALSE;   // Close feed valve to prevent underpressure
+    END_IF;
+
+    // Check temperature condition
+    IF TT_101_Value > MAX_TEMPERATURE THEN
+        Reboiler_Valve_Open := FALSE; // Close reboiler heating valve to prevent overheating
+    END_IF;
+
+    RETURN TRUE;
+END_METHOD
+
+END_PROGRAM

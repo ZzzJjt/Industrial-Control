@@ -1,4 +1,53 @@
-**Learning IEC 61499:**
-Provide a concise introduction to the IEC 61499 programming language, emphasizing key concepts for someone already familiar with IEC 61131-3. Include a comparison of their fundamental differences in terms of architecture, execution models, and flexibility for distributed control systems. Additionally, compile a list of five key references for further reading on IEC 61499, highlighting its relevance in modern industrial applications.
+FUNCTION_BLOCK MotorController
+  EVENT_INPUT   START, STOP
+  EVENT_OUTPUT  CONFIRM
 
+  VAR_INPUT
+    ENABLE : BOOL;
+  END_VAR
+
+  VAR_OUTPUT
+    MOTOR_ON : BOOL;
+  END_VAR
+END_FUNCTION_BLOCK
+
+// STATES
+STATE INIT :
+  MOTOR_ON := FALSE;
+  IF START THEN
+    TRANSITION TO STARTING;
+  END_IF;
+
+STATE STARTING :
+  IF ENABLE THEN
+    MOTOR_ON := TRUE;
+    EMIT CONFIRM;
+    TRANSITION TO RUNNING;
+  ELSE
+    TRANSITION TO INIT;
+  END_IF;
+
+STATE RUNNING :
+  IF STOP THEN
+    TRANSITION TO STOPPING;
+  END_IF;
+
+STATE STOPPING :
+  MOTOR_ON := FALSE;
+  EMIT CONFIRM;
+  TRANSITION TO INIT;
+
+  ALGORITHM INIT_ALG
+  MOTOR_ON := FALSE;
+END_ALGORITHM
+
+ALGORITHM START_ALG
+  IF ENABLE THEN
+    MOTOR_ON := TRUE;
+  END_IF;
+END_ALGORITHM
+
+ALGORITHM STOP_ALG
+  MOTOR_ON := FALSE;
+END_ALGORITHM
 

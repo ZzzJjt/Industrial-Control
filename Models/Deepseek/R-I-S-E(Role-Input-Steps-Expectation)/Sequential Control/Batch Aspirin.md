@@ -1,6 +1,90 @@
-**Batch Aspirin:**
+PROGRAM PLC_PRG
+VAR
+    // Batch Control Flags
+    bStartBatch         : BOOL := FALSE;
+    bBatchComplete      : BOOL := FALSE;
+    bEmergencyStop      : BOOL := FALSE;
 
-Develop an ISA-88 batch control recipe for the production of aspirin (acetylsalicylic acid), outlining the process stages and the physical structure, which includes a reactor, crystallizer, centrifuge, and dryer. The process involves the following educts: acetic anhydride, salicylic acid, and sulfuric acid as a catalyst, with products being acetylsalicylic acid and acetic acid. The drying stage should occur at 90°C.
+    // Process Parameters
+    rReactionTemp       : REAL := 85.0;  // °C
+    tReactionTime       : TIME := T#30m;
+    rCrystallizationTemp: REAL := 25.0;  // °C
+    tCrystallizationTime: TIME := T#1h;
+    tDryerTemp          : REAL := 90.0;  // °C
+    tDryingTime         : TIME := T#2h;
 
-Write a self-contained program in IEC 61131-3 Structured Text for the sequential control of the reaction stage, incorporating typical parameter values for temperature, pressure, and timing. Ensure that the program logic follows the batch control principles of ISA-88, with clear transitions between operations like heating, mixing, and reaction completion. Additionally, include control parameters for initiating and managing the crystallization and drying phases, ensuring that temperature and time controls are accurate.
+    // Equipment Status
+    bReactorHeaterOn    : BOOL := FALSE;
+    bMixerOn            : BOOL := FALSE;
+    bCrystallizerActive : BOOL := FALSE;
+    bCentrifugeOn       : BOOL := FALSE;
+    bDryerOn            : BOOL := FALSE;
 
+    // Sensors
+    rReactorTemp        : REAL := 0.0;
+    rReactorPressure    : REAL := 0.0;
+    rDryerTemp          : REAL := 0.0;
+
+    // Timers
+    tmrReaction         : TON;
+    tmrCrystallization  : TON;
+    tmrDrying           : TON;
+
+    // State Machine
+    eState              : E_ASPRIN_BATCH_STEP := STEP_IDLE;
+END_VAR
+
+TYPE E_ASPRIN_BATCH_STEP :
+(
+    STEP_IDLE,
+    STEP_REACTION_PHASE,
+    STEP_CRYSTALLIZATION_PHASE,
+    STEP_CENTRIFUGE_PHASE,
+    STEP_DRYING_PHASE,
+    STEP_COMPLETE,
+    STEP_ABORTED
+);
+END_TYPE
+
+// Emergency Stop Override
+IF bEmergencyStop THEN
+    eState := STEP_ABORTED;
+END_IF;
+
+CASE eState OF
+    STEP_IDLE:
+        IF bStartBatch THEN
+            StartReaction(rReactionTemp, tReactionTime);
+            eState := STEP_REACTION_PHASE;
+        END_IF;
+
+    STEP_REACTION_PHASE:
+        IF IsReactionComplete() THEN
+            StartCrystallization(rCrystallizationTemp, tCrystallizationTime);
+            eState := STEP_CRYSTALLIZATION_PHASE;
+        END_IF;
+
+    STEP_CRYSTALLIZATION_PHASE:
+        IF IsCrystallizationComplete() THEN
+            StartCentrifuge();
+            eState := STEP_CENTRIFUGE_PHASE;
+        END_IF;
+
+    STEP_CENTRIFUGE_PHASE:
+        Delay(T#5m); // Simulate centrifuge time
+        StartDrying(tDryingTime);
+        eState := STEP_DRYING_PHASE;
+
+    STEP_DRYING_PHASE:
+        IF IsDryingComplete() THEN
+            bBatchComplete := TRUE;
+            eState := STEP_COMPLETE;
+        END_IF;
+
+    STEP_COMPLETE:
+        ; // No action needed — handled by higher-level system
+
+    STEP_ABORTED:
+        AbortAllProcesses();
+        bBatchComplete := FALSE;
+END_CASE;

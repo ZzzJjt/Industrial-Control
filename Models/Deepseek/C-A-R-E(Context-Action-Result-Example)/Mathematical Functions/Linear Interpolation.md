@@ -1,4 +1,40 @@
-**Linear Interpolation:**
+FUNCTION_BLOCK LinearInterpolation
+VAR_INPUT
+    X1 : REAL; // X-coordinate of the first known point
+    Y1 : REAL; // Y-coordinate of the first known point
+    X2 : REAL; // X-coordinate of the second known point
+    Y2 : REAL; // Y-coordinate of the second known point
+    X : REAL;  // Query point for which Y is interpolated
+END_VAR
 
-Create a self-contained function block in IEC 61131-3 Structured Text to compute linear interpolation between two points. Ensure the function block is designed for general use, with detailed comments explaining the mathematical formula behind the interpolation process. Discuss considerations for precision and potential rounding errors, as well as the function block’s suitability for use in industrial control systems where real-time responsiveness is critical.
+VAR_OUTPUT
+    Y : REAL; // Interpolated Y value
+END_VAR
+
+VAR
+    DeltaX : REAL; // Difference between X2 and X1
+    DeltaY : REAL; // Difference between Y2 and Y1
+    Slope : REAL;  // Slope of the line segment
+    Intercept : REAL; // Intercept of the line segment
+END_VAR
+
+// Calculate differences
+DeltaX := X2 - X1;
+DeltaY := Y2 - Y1;
+
+// Check for zero denominator to avoid division error
+IF DeltaX <> 0.0 THEN
+    // Calculate slope and intercept
+    Slope := DeltaY / DeltaX;
+    Intercept := Y1 - (Slope * X1);
+    
+    // Perform linear interpolation
+    Y := Slope * X + Intercept;
+ELSE
+    // Handle the case where X1 = X2 (vertical line)
+    // Default to Y1 since no unique Y can be determined
+    Y := Y1;
+END_IF;
+
+
 

@@ -1,6 +1,29 @@
-**Cascade Control Oil Refinery:**
+FUNCTION_BLOCK CascadePressureControl
+VAR_INPUT
+    Pressure_SP     : REAL := 12.0; // Desired vessel pressure (bar)
+    Pressure_PV     : REAL;         // Measured vessel pressure
+    Flow_PV         : REAL;         // Measured oil flow rate
+END_VAR
 
-Develop a self-contained IEC 61131-3 Structured Text program (not a function block) to implement cascade control for pressure regulation in an oil refinery vessel. The primary loop should control the vessel pressure, adjusting the pressure setpoint based on the process requirements. The secondary loop controls the flow of oil into the vessel, with the output of the primary loop serving as the setpoint for the secondary loop.
+VAR_OUTPUT
+    Flow_Output     : REAL;         // Command to flow control valve
+    Flow_SP         : REAL;         // Inner loop setpoint
+END_VAR
 
-Ensure that the program manages the interaction between the two control loops, allowing the inner loop (oil flow control) to respond rapidly to changes in flow while the outer loop (pressure control) maintains overall process stability. Include typical parameter values for pressure and flow control, and discuss the benefits of cascade control in oil refinery operations, particularly for improving response time and process stability in systems with large disturbances.
+VAR
+    // Control errors
+    Pressure_Error  : REAL;
+    Flow_Error      : REAL;
 
+    // Controller gains
+    Kp_Outer        : REAL := 1.2;  // Outer loop gain for pressure
+    Kp_Inner        : REAL := 2.5;  // Inner loop gain for flow
+END_VAR
+
+// --- Outer Loop: Pressure Control ---
+Pressure_Error := Pressure_SP - Pressure_PV;
+Flow_SP := Kp_Outer * Pressure_Error; // Setpoint for flow controller
+
+// --- Inner Loop: Flow Control ---
+Flow_Error := Flow_SP - Flow_PV;
+Flow_Output := Kp_Inner * Flow_Error; // Valve actuation signal

@@ -1,12 +1,74 @@
-**Shutdown Steel Production:**
+PROGRAM PLC_PRG
+VAR
+    // Shutdown Flags
+    bStartShutdown      : BOOL := FALSE;
+    bShutdownComplete   : BOOL := FALSE;
+    bEmergencyStop      : BOOL := FALSE;
 
-Develop a comprehensive list of steps for the controlled shutdown of a steel production facility. Include key stages such as reducing furnace temperature, controlling gas flow rates, and maintaining safe oxygen levels throughout the shutdown process.
+    // Process Parameters
+    rTargetTemp         : REAL := 400.0;     // °C
+    tCoolingTime        : TIME := T#8h;      // Time to reach target temp
+    tGasRampDownTime    : TIME := T#12h;     // Duration of fuel gas reduction
+    rFuelToAirRatio     : REAL := 2.5;       // Desired air/fuel ratio
 
-Provide a detailed control narrative for steps 4 to 6 of the shutdown sequence, specifying concrete ranges and setpoints for variables such as temperature, gas flow, and oxygen levels.
+    // Equipment Status
+    bFurnaceCooling     : BOOL := FALSE;
+    bGasFlowRamping     : BOOL := FALSE;
+    bOxygenRegulating   : BOOL := FALSE;
 
-Write a self-contained IEC 61131-3 Structured Text program based on this control narrative, ensuring proper sequencing and safety protocols.
+    // Sensors
+    rCurrentTemp        : REAL := 0.0;       // Current furnace temp
+    rCurrentFuelFlow    : REAL := 0.0;       // Fuel flow rate (e.g., m³/hr)
+    rCurrentOxygenLevel : REAL := 0.0;       // % O₂ in combustion air
 
-Additionally, create a function in IEC 61131-3 to gradually reduce the fuel gas flow rate to the furnace burners over a period of 12 hours. This function should incorporate timing and safety checks to ensure smooth transitions.
+    // Timers
+    tmrCooling          : TON;
+    tmrGasRampDown      : TON;
 
-Lastly, write an IEC 61131-3 function for adjusting the oxygen supply to the burners to maintain a precise fuel-to-air ratio of 1:2.5 during the shutdown. Ensure the function is adaptable to fluctuations in gas flow and temperature, and include safeguards for maintaining combustion efficiency.
+    // State Machine
+    eState              : E_SHUTDOWN_STEP := STEP_IDLE;
 
+    // Outputs
+    rGasValveOutput     : REAL := 0.0;       // % valve opening
+    rAirDamperOutput    : REAL := 0.0;       // % damper position
+    bAlarmHighTemp      : BOOL := FALSE;
+    bAlarmLowOxygen     : BOOL := FALSE;
+END_VAR
+
+// Emergency Stop Override
+IF bEmergencyStop THEN
+    eState := STEP_ABORTED;
+END_IF;
+
+CASE eState OF
+    STEP_IDLE:
+        IF bStartShutdown THEN
+            StartFurnaceCooling(rTargetTemp, tCoolingTime);
+            eState := STEP_FURNACE_COOLING;
+        END_IF;
+
+    STEP_FURNACE_COOLING:
+        IF IsFurnaceCooled() THEN
+            StartGasFlowRampDown(tGasRampDownTime);
+            eState := STEP_GAS_FLOW_RAMP_DOWN;
+        END_IF;
+
+    STEP_GAS_FLOW_RAMP_DOWN:
+        IF IsGasRampDone() THEN
+            StartOxygenRegulation(rFuelToAirRatio);
+            eState := STEP_OXYGEN_REGULATION;
+        END_IF;
+
+    STEP_OXYGEN_REGULATION:
+        IF IsOxygenStable() THEN
+            bShutdownComplete := TRUE;
+            eState := STEP_COMPLETE;
+        END_IF;
+
+    STEP_COMPLETE:
+        ; // No action required — handled by higher-level system
+
+    STEP_ABORTED:
+        AbortAllProcesses();
+        bShutdownComplete := FALSE;
+END_CASE;

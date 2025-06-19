@@ -1,14 +1,173 @@
-**Translate ST To Instruction List:**
+// Declare Variables
+LD #FALSE          // Load FALSE
+ST Mode            // Store in Mode
+LD #FALSE          // Load FALSE
+ST StartButton     // Store in StartButton
+LD #FALSE          // Load FALSE
+ST StopButton      // Store in StopButton
+LD #FALSE          // Load FALSE
+ST PickComplete    // Store in PickComplete
+LD #FALSE          // Load FALSE
+ST PlaceComplete   // Store in PlaceComplete
+LD #FALSE          // Load FALSE
+ST Running         // Store in Running
 
-Translate the following 61131-3 Structured Text program to 61131-3 Instruction List: PROGRAM PickAndPlace VAR ManualButton : BOOL; // Input signal for manual mode AutoButton : BOOL; // Input signal for auto mode ClipButton : BOOL; // Input signal for clip action TransferButton : BOOL; // Input signal for transfer action ReleaseButton : BOOL; // Input signal for release action ConveyorA : BOOL; // Input signal for presence of product on conveyor A ConveyorB : BOOL; // Output signal to control conveyor B RoboticArm : BOOL; // Output signal to control the robotic arm Mode : INT := 0; // Internal variable to store the current mode (0 = manual, 1 = auto) AutoProcess : BOOL := FALSE; // Internal variable to store whether the auto control process is currently running END_VAR
+// Initialize Timer
+LD #T#0s           // Load zero time
+TON                // Initialize timer
+LD #FALSE          // Load FALSE
+ST DelayTimer.IN   // Store in DelayTimer.IN
 
-// Manual mode control process IF ManualButton THEN Mode := 0; // Set mode to manual END_IF
+// Main Control Logic
+LABEL MainLoop
 
-IF Mode = 0 THEN // Manual mode IF ClipButton AND ConveyorA THEN RoboticArm := TRUE; // Clip the product ELSIF TransferButton THEN ConveyorB := TRUE; // Transfer the product to conveyor B ELSIF ReleaseButton THEN ConveyorB := FALSE; // Release the product from conveyor B END_IF END_IF
+// Check Mode
+LD Mode
+JMPC AutoMode      // Jump if Mode is TRUE (Automatic)
 
-// Auto mode control process IF AutoButton THEN Mode := 1; // Set mode to auto END_IF
+// Manual Mode
+LD StartButton
+LD Running
+XOR                // XOR to check if StartButton is TRUE and Running is FALSE
+JMPZ ManualRunCheck // Jump if result is FALSE
 
-IF Mode = 1 THEN // Auto mode IF NOT AutoProcess AND ConveyorA THEN // Only start the process if not currently running and there is a product on conveyor A AutoProcess := TRUE; // Set flag to indicate that the auto process is running RoboticArm := TRUE; // Clip the product WAIT 2; // Wait for 2 seconds to transfer the product ConveyorB := TRUE; // Transfer the product to conveyor B END_IF IF ConveyorB AND NOT ConveyorA THEN // Release the product from conveyor B once it has been transferred and there is no product on conveyor A ConveyorB := FALSE; AutoProcess := FALSE; // Clear the flag to indicate that the auto process is not running END_IF END_IF
+// Start Process in Manual Mode
+LD #TRUE
+ST Running
+LD #FALSE
+ST PickComplete
+LD #FALSE
+ST PlaceComplete
+
+ManualRunCheck:
+LD StopButton
+LD Running
+AND                // AND to check if StopButton is TRUE and Running is TRUE
+JMPZ PickOperationCheck // Jump if result is FALSE
+
+// Stop Process in Manual Mode
+LD #FALSE
+ST Running
+
+PickOperationCheck:
+LD Running
+LD PickComplete
+XOR                // XOR to check if Running is TRUE and PickComplete is FALSE
+JMPZ PlaceOperationCheck // Jump if result is FALSE
+
+// Simulate Pick Operation in Manual Mode
+LD #TRUE
+ST PickComplete
+LD #T#500ms        // Load 500 ms delay
+TON                // Start timer
+LD DelayTimer.Q
+JMPZ PickOperationCheck // Repeat until timer expires
+
+PlaceOperationCheck:
+LD Running
+LD PickComplete
+AND                // AND to check if Running is TRUE and PickComplete is TRUE
+LD PlaceComplete
+XOR                // XOR to check if PlaceComplete is FALSE
+JMPZ ResetOperationsCheck // Jump if result is FALSE
+
+// Simulate Place Operation in Manual Mode
+LD #TRUE
+ST PlaceComplete
+LD #T#500ms        // Load 500 ms delay
+TON                // Start timer
+LD DelayTimer.Q
+JMPZ PlaceOperationCheck // Repeat until timer expires
+
+ResetOperationsCheck:
+LD Running
+LD PickComplete
+AND                // AND to check if Running is TRUE and PickComplete is TRUE
+LD PlaceComplete
+AND                // AND to check if PlaceComplete is TRUE
+JMPZ MainLoop      // Jump back to main loop if not all conditions are met
+
+// Reset Operations in Manual Mode
+LD #FALSE
+ST PickComplete
+LD #FALSE
+ST PlaceComplete
+LD #FALSE
+ST Running
+JMP MainLoop       // Jump back to main loop
+
+AutoMode:
+LD StartButton
+LD Running
+XOR                // XOR to check if StartButton is TRUE and Running is FALSE
+JMPZ AutoRunCheck  // Jump if result is FALSE
+
+// Start Process in Automatic Mode
+LD #TRUE
+ST Running
+LD #FALSE
+ST PickComplete
+LD #FALSE
+ST PlaceComplete
+
+AutoRunCheck:
+LD StopButton
+LD Running
+AND                // AND to check if StopButton is TRUE and Running is TRUE
+JMPZ AutoPickOperationCheck // Jump if result is FALSE
+
+// Stop Process in Automatic Mode
+LD #FALSE
+ST Running
+
+AutoPickOperationCheck:
+LD Running
+LD PickComplete
+XOR                // XOR to check if Running is TRUE and PickComplete is FALSE
+JMPZ AutoPlaceOperationCheck // Jump if result is FALSE
+
+// Simulate Pick Operation in Automatic Mode
+LD #TRUE
+ST PickComplete
+LD #T#500ms        // Load 500 ms delay
+TON                // Start timer
+LD DelayTimer.Q
+JMPZ AutoPickOperationCheck // Repeat until timer expires
+
+AutoPlaceOperationCheck:
+LD Running
+LD PickComplete
+AND                // AND to check if Running is TRUE and PickComplete is TRUE
+LD PlaceComplete
+XOR                // XOR to check if PlaceComplete is FALSE
+JMPZ AutoResetOperationsCheck // Jump if result is FALSE
+
+// Simulate Place Operation in Automatic Mode
+LD #TRUE
+ST PlaceComplete
+LD #T#500ms        // Load 500 ms delay
+TON                // Start timer
+LD DelayTimer.Q
+JMPZ AutoPlaceOperationCheck // Repeat until timer expires
+
+AutoResetOperationsCheck:
+LD Running
+LD PickComplete
+AND                // AND to check if Running is TRUE and PickComplete is TRUE
+LD PlaceComplete
+AND                // AND to check if PlaceComplete is TRUE
+JMPZ MainLoop      // Jump back to main loop if not all conditions are met
+
+// Reset Operations in Automatic Mode
+LD #FALSE
+ST PickComplete
+LD #FALSE
+ST PlaceComplete
+LD #FALSE
+ST Running
+
+MainLoop:
+JMP MainLoop       // Infinite loop to keep scanning
 
 
 

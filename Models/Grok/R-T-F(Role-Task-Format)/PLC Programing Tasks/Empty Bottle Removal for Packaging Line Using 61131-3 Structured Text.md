@@ -1,6 +1,44 @@
-**Empty Bottle Removal for Packaging Line Using 61131-3 Structured Text:**
+PROGRAM PackagingLineControl
+VAR
+    (* Inputs *)
+    BottlePresentSensor : BOOL; (* TRUE if a bottle is detected on the conveyor *)
+    EmptyBottleSensor : BOOL; (* TRUE if the detected bottle is empty *)
+    
+    (* Outputs *)
+    ConveyorMotor : BOOL := TRUE; (* TRUE to run the conveyor continuously *)
+    EjectCylinder : BOOL; (* TRUE to extend cylinder and eject empty bottle *)
+    
+    (* Internal variables *)
+    EjectTimer : TON; (* 500ms timer for ejection duration *)
+    ErrorCode : INT := 0; (* 0: Success, 1: Sensor conflict *)
+END_VAR
 
-Write a self-contained 61131-3 structured text (ST) program to automate the removal of empty bottles in a packaging line. After bottles are filled, they are transported by a conveyor toward the packaging station. The system includes two proximity sensors: one detects the presence of any bottle, and the second detects only empty bottles. When an empty bottle is detected, a pneumatic cylinder is activated to remove the empty bottle from the conveyor before it reaches the packaging area.
+(* Ensure conveyor runs continuously *)
+ConveyorMotor := TRUE;
 
-Ensure that the program controls the conveyor and cylinder operations efficiently, preventing any empty bottles from continuing to the packaging process, while maintaining smooth operation for filled bottles.
+(* Validate sensor inputs *)
+IF BottlePresentSensor AND NOT EmptyBottleSensor THEN
+    (* Filled bottle detected: no action needed *)
+    ErrorCode := 0;
+ELSIF BottlePresentSensor AND EmptyBottleSensor THEN
+    (* Empty bottle detected: initiate ejection *)
+    ErrorCode := 0;
+ELSE
+    (* No bottle or invalid state *)
+    ErrorCode := 0;
+END_IF;
 
+(* Ejection logic *)
+IF BottlePresentSensor AND EmptyBottleSensor THEN
+    (* Empty bottle detected: start ejection timer *)
+    EjectTimer(IN := TRUE, PT := T#500ms);
+    EjectCylinder := TRUE; (* Extend cylinder to eject bottle *)
+ELSE
+    (* No empty bottle: reset timer if not running *)
+    EjectTimer(IN := FALSE);
+    IF NOT EjectTimer.Q THEN
+        EjectCylinder := FALSE; (* Retract cylinder *)
+    END_IF;
+END_IF;
+
+END_PROGRAM

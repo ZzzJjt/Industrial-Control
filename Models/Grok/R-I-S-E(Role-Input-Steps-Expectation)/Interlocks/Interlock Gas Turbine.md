@@ -1,16 +1,209 @@
-**Interlock Gas Turbine:**
+FUNCTION_BLOCK TURBINE_INTERLOCK
+VAR_INPUT
+    Execute: BOOL;             // Cyclic execution trigger
+    TT101: REAL;               // Exhaust temperature (°C), 0–800
+    ST101: REAL;               // Turbine speed (RPM), 0–4000
+    PT101: REAL;               // Compressor pressure (bar), 0–40
+    PT102: REAL;               // Lube oil pressure (bar), 0–10
+    VT101: REAL;               // Vibration (mm/s RMS), 0–20
+    FD101: BOOL;               // Flame detector, TRUE: Flame present
+    PT103: REAL;               // Fuel gas pressure (bar), 0–10
+    FT101: REAL;               // Cooling water flow (L/min), 0–100
+    SD101: BOOL;               // Surge detector, TRUE: Surge detected
+    ES101: BOOL;               // Emergency stop, TRUE: Activated
+END_VAR
 
-Develop a complete list of interlocks required for a gas turbine in a power plant. These interlocks are essential for ensuring safe operation and protecting the equipment from damage or failure. The list includes critical safety conditions and the corresponding actions to prevent hazardous situations:
+VAR_OUTPUT
+    Done: BOOL;                // TRUE when interlocks processed
+    Error: BOOL;               // TRUE if error occurs
+    ErrorID: DWORD;            // 0: No error, 1: Sensor fault
+    FV101_Command: BOOL;       // Fuel Valve, FALSE: Close, TRUE: Open
+    PRV101_Command: BOOL;      // Pressure Relief Valve, TRUE: Open
+    ASV101_Command: BOOL;      // Anti-Surge Valve, TRUE: Open
+    SC101_Command: REAL;       // Speed Controller, 0–100%
+    MOT101_Command: BOOL;      // Mechanical Overspeed Trip, TRUE: Engage
+    TA101_Command: BOOL;       // Alarm, TRUE: Active
+    ESD101_Command: BOOL;      // Emergency Shutdown, TRUE: Active
+    AuditMessage: STRING[80];  // Event or error log
+END_VAR
 
-	1.	Overtemperature Interlock: Shutdown the turbine if the exhaust gas temperature exceeds a predefined limit (e.g., 650°C) to prevent thermal damage to turbine components.
-	2.	Overspeed Interlock: Trigger an emergency stop if the turbine rotor speed exceeds its maximum operating threshold (e.g., 105% of nominal speed), ensuring the protection of mechanical components.
-	3.	Overpressure Interlock: Open the pressure relief valve if the pressure in the combustion chamber exceeds safe levels (e.g., 30 bar) to prevent pressure-related damage or explosion.
-	4.	Low Lubrication Pressure Interlock: Stop the turbine if lubrication oil pressure falls below the safe operating limit (e.g., 1.5 bar) to avoid bearing or rotor damage due to insufficient lubrication.
-	5.	High Vibration Interlock: Shut down the turbine if excessive vibration is detected (e.g., vibration amplitude exceeds 10 mm/s), which could indicate mechanical imbalance or impending failure.
-	6.	Flame Failure Interlock: Immediately stop fuel flow and trigger an alarm if the flame in the combustion chamber extinguishes, preventing unburned fuel accumulation and potential explosion risks.
-	7.	Fuel Gas Pressure Low Interlock: Close the fuel valve and stop the turbine if the fuel gas pressure drops below the required minimum (e.g., 2 bar) to avoid incomplete combustion.
-	8.	Cooling Water Flow Interlock: Shutdown the turbine if cooling water flow falls below the minimum safe flow rate (e.g., 200 L/min), ensuring the turbine components do not overheat.
-	9.	Compressor Surge Interlock: Activate a bypass valve or reduce load if the compressor experiences a surge condition, preventing damage to the compressor blades.
-	10.	Emergency Stop Interlock: Provide a manual emergency stop button that immediately shuts down the turbine and isolates fuel supply in case of any critical malfunction.
+VAR
+    ExecuteEdge: BOOL;         // Edge detection for Execute
+    SensorValid: BOOL;         // TRUE if sensors are valid
+    InterlockTriggered: BOOL;  // TRUE if any interlock is active
+END_VAR
 
-These interlocks play a crucial role in protecting the gas turbine from overheating, overpressure, and mechanical failure, ensuring safe and efficient operation in a power plant environment. Discuss how these interlocks are integrated into the overall turbine control system and their importance in maintaining safety and operational integrity.
+// Reset outputs when not executing
+IF NOT Execute THEN
+    Done := FALSE;
+    Error := FALSE;
+    ErrorID := 0;
+    FV101_Command := TRUE;     // Default: Open
+    PRV101_Command := FALSE;   // Default: Closed
+    ASV101_Command := FALSE;   // Default: Closed
+    SC101_Command := 100.0;    // Default: Full speed
+    MOT101_Command := FALSE;   // Default: Disengaged
+    TA101_Command := FALSE;    // Default: Off
+    ESD101_Command := FALSE;   // Default: Off
+    AuditMessage := '';
+    ExecuteEdge := FALSE;
+    RETURN;
+END_IF;
+
+// Cyclic execution
+IF Execute THEN
+    // Initialize on rising edge
+    IF NOT ExecuteEdge THEN
+        ExecuteEdge := TRUE;
+        Done := FALSE;
+        Error := FALSE;
+        ErrorID := 0;
+        FV101_Command := TRUE;
+        PRV101_Command := FALSE;
+        ASV101_Command := FALSE;
+        SC101_Command := 100.0;
+        MOT101_Command := FALSE;
+        TA101_Command := FALSE;
+        ESD101_Command := FALSE;
+        AuditMessage := 'Interlock monitoring started';
+    END_IF;
+    
+    // Validate sensor readings
+    SensorValid := TRUE;
+    InterlockTriggered := FALSE;
+    
+    IF TT101 < 0.0 OR TT101 > 800.0 OR
+       ST101 < 0.0 OR ST101 > 4000.0 OR
+       PT101 < 0.0 OR PT101 > 40.0 OR
+       PT102 < 0.0 OR PT102 > 10.0 OR
+       VT101 < 0.0 OR VT101 > 20.0 OR
+       FT101 < 0.0 OR FT101 > 100.0 THEN
+        SensorValid := FALSE;
+        Error := TRUE;
+        ErrorID := 1; // Sensor fault
+        AuditMessage := 'Sensor fault detected';
+        FV101_Command := FALSE; // Close fuel valve
+        PRV101_Command := TRUE; // Open relief valve
+        ASV101_Command := TRUE; // Open anti-surge valve
+        SC101_Command := 0.0;   // Stop turbine
+        MOT101_Command := TRUE; // Engage overspeed trip
+        TA101_Command := TRUE;  // Trigger alarm
+        ESD101_Command := TRUE; // Initiate shutdown
+        InterlockTriggered := TRUE;
+        Done := TRUE;
+        RETURN;
+    END_IF;
+    
+    // Interlock logic
+    IF SensorValid THEN
+        // Overtemperature (> 650°C)
+        IF TT101 > 650.0 THEN
+            FV101_Command := FALSE;
+            TA101_Command := TRUE;
+            ESD101_Command := TRUE;
+            InterlockTriggered := TRUE;
+            AuditMessage := 'Overtemperature: ' + REAL_TO_STRING(TT101) + '°C';
+        END_IF;
+        
+        // Overspeed (> 3600 RPM)
+        IF ST101 > 3600.0 THEN
+            FV101_Command := FALSE;
+            MOT101_Command := TRUE;
+            TA101_Command := TRUE;
+            ESD101_Command := TRUE;
+            InterlockTriggered := TRUE;
+            AuditMessage := 'Overspeed: ' + REAL_TO_STRING(ST101) + ' RPM';
+        END_IF;
+        
+        // Overpressure (> 30 bar)
+        IF PT101 > 30.0 THEN
+            PRV101_Command := TRUE;
+            FV101_Command := FALSE;
+            TA101_Command := TRUE;
+            InterlockTriggered := TRUE;
+            AuditMessage := 'Overpressure: ' + REAL_TO_STRING(PT101) + ' bar';
+        END_IF;
+        
+        // Low Lubrication Pressure (< 1.5 bar)
+        IF PT102 < 1.5 THEN
+            FV101_Command := FALSE;
+            TA101_Command := TRUE;
+            ESD101_Command := TRUE;
+            InterlockTriggered := TRUE;
+            AuditMessage := 'Low lube pressure: ' + REAL_TO_STRING(PT102) + ' bar';
+        END_IF;
+        
+        // High Vibration (> 10 mm/s)
+        IF VT101 > 10.0 THEN
+            SC101_Command := 50.0; // Reduce speed
+            TA101_Command := TRUE;
+            IF VT101 > 12.0 THEN   // Critical threshold
+                ESD101_Command := TRUE;
+            END_IF;
+            InterlockTriggered := TRUE;
+            AuditMessage := 'High vibration: ' + REAL_TO_STRING(VT101) + ' mm/s';
+        END_IF;
+        
+        // Flame Failure
+        IF NOT FD101 THEN
+            FV101_Command := FALSE;
+            TA101_Command := TRUE;
+            ESD101_Command := TRUE;
+            InterlockTriggered := TRUE;
+            AuditMessage := 'Flame failure detected';
+        END_IF;
+        
+        // Low Fuel Gas Pressure (< 5 bar)
+        IF PT103 < 5.0 THEN
+            FV101_Command := FALSE;
+            TA101_Command := TRUE;
+            ESD101_Command := TRUE;
+            InterlockTriggered := TRUE;
+            AuditMessage := 'Low fuel pressure: ' + REAL_TO_STRING(PT103) + ' bar';
+        END_IF;
+        
+        // Low Cooling Water Flow (< 50 L/min)
+        IF FT101 < 50.0 THEN
+            SC101_Command := 50.0; // Reduce load
+            TA101_Command := TRUE;
+            IF FT101 < 40.0 THEN   // Critical threshold
+                ESD101_Command := TRUE;
+            END_IF;
+            InterlockTriggered := TRUE;
+            AuditMessage := 'Low cooling flow: ' + REAL_TO_STRING(FT101) + ' L/min';
+        END_IF;
+        
+        // Compressor Surge
+        IF SD101 THEN
+            ASV101_Command := TRUE;
+            SC101_Command := 50.0;
+            TA101_Command := TRUE;
+            InterlockTriggered := TRUE;
+            AuditMessage := 'Compressor surge detected';
+        END_IF;
+        
+        // Emergency Stop
+        IF ES101 THEN
+            FV101_Command := FALSE;
+            TA101_Command := TRUE;
+            ESD101_Command := TRUE;
+            InterlockTriggered := TRUE;
+            AuditMessage := 'Emergency stop activated';
+        END_IF;
+        
+        // Reset commands if no interlocks triggered
+        IF NOT InterlockTriggered THEN
+            FV101_Command := TRUE;
+            PRV101_Command := FALSE;
+            ASV101_Command := FALSE;
+            SC101_Command := 100.0;
+            MOT101_Command := FALSE;
+            TA101_Command := FALSE;
+            ESD101_Command := FALSE;
+            AuditMessage := 'Normal operation';
+        END_IF;
+        
+        Done := TRUE;
+    END_IF;
+END_IF;
+END_FUNCTION_BLOCK

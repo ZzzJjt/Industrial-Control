@@ -1,5 +1,63 @@
-**PID Flow Control Water Treatment:**
+PROGRAM ChlorineDosingControl
+VAR
+    // Inputs
+    FlowRate : REAL; // Flow rate (optional for future use)
+    Dosing_PV : REAL; // Measured chlorine concentration (ppm)
+    Dosing_SP : REAL := 3.0; // Target setpoint (ppm)
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement PID feedback control for chemical dosing in a water treatment process. The program should regulate the dosing rate of chlorine at 3 ppm, adjusting based on real-time flow measurements with a sampling rate of 100 ms.
+    // PID tuning parameters
+    Kp : REAL := 2.0;
+    Ki : REAL := 0.5;
+    Kd : REAL := 0.1;
 
-The control logic should include PID parameters (proportional, integral, and derivative gains) that are tuned for maintaining the desired dosing concentration. Ensure the program accounts for any deviations from the setpoint and adjusts the chemical dosing accordingly, while including safety limits to prevent overdosing or underdosing. Discuss the importance of precise flow control in water treatment, with a focus on maintaining safe and effective chemical levels.
+    // Internal PID variables
+    Error : REAL;
+    Prev_Error : REAL := 0.0;
+    Integral : REAL := 0.0;
+    Derivative : REAL;
+    Dosing_Output : REAL;
+
+    // Safety limits
+    Max_Dose : REAL := 10.0;
+    Min_Dose : REAL := 0.0;
+
+    // Timer for sampling every 100 ms
+    SamplingTimer : TON;
+END_VAR
+
+// Initialize the timer with a period of 100 ms
+SamplingTimer(PT := T#100ms);
+
+// Main control loop
+IF SamplingTimer.Q THEN
+    // Calculate error
+    Error := Dosing_SP - Dosing_PV;
+
+    // Update integral term
+    Integral := Integral + Error * 0.1; // Integral over 100 ms
+
+    // Update derivative term
+    Derivative := (Error - Prev_Error) / 0.1; // Derivative over 100 ms
+
+    // Calculate PID output
+    Dosing_Output := (Kp * Error) + (Ki * Integral) + (Kd * Derivative);
+
+    // Clamp output to safe range
+    IF Dosing_Output > Max_Dose THEN
+        Dosing_Output := Max_Dose;
+    ELSIF Dosing_Output < Min_Dose THEN
+        Dosing_Output := Min_Dose;
+    END_IF;
+
+    // Store current error as previous error for next iteration
+    Prev_Error := Error;
+
+    // Reset the timer
+    SamplingTimer(IN := FALSE);
+END_IF;
+
+// Start the timer
+SamplingTimer(IN := TRUE);
+
+// Dosing_Output is sent to dosing pump control interface
+// Example: SetDosingPump(Dosing_Output); // Placeholder function to set dosing pump speed

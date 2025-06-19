@@ -1,7 +1,49 @@
-**Interlock Gas Wellhead:**
+PROGRAM PLC_PRG
+VAR
+    // Constants
+    MAX_PRESSURE: REAL := 1500.0;      // psi
+    MIN_TEMPERATURE: REAL := -50.0;    // °C
+    MAX_TEMPERATURE: REAL := 120.0;    // °C
+    MIN_FLOW: REAL := 50.0;            // Minimum acceptable flow rate (L/min)
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement emergency interlocks for a subsea gas wellhead. The program should monitor critical parameters such as wellhead pressure, temperature, and flow rates using pressure transmitters (PT), temperature transmitters (TT), and flow meters (FT). The interlock system should immediately trigger emergency shutdown procedures if any of these parameters exceed predefined safety limits.
+    // Inputs
+    PT_101: REAL := 0.0;               // Pressure measurement (psi)
+    TT_101: REAL := 0.0;               // Temperature measurement (°C)
+    FT_101: REAL := 0.0;               // Flow rate measurement (L/min)
+    Manual_Reset: BOOL := FALSE;       // Manual reset after shutdown
 
-The program should include logic for closing the master valve (MV-101) if wellhead pressure exceeds 1500 psi, or if flow rate drops below the minimum threshold, indicating a potential leak. Additionally, integrate temperature monitoring to shut down the system if the temperature exceeds 120°C. Incorporate safety features such as automatic reset prevention, ensuring that manual intervention is required to restart the system after an emergency shutdown.
+    // Outputs
+    MV_101_Open: BOOL := TRUE;         // Master Valve (TRUE = Open, FALSE = Closed)
+    SHUTDOWN_ACTIVE: BOOL := FALSE;    // Indicates active shutdown state
 
-Discuss the critical role of emergency interlocks in subsea gas wellhead operations, particularly in preventing catastrophic failures due to pressure, temperature, or flow anomalies.
+    // Internal flags
+    Pressure_High: BOOL := FALSE;
+    Flow_Low: BOOL := FALSE;
+    Temp_High: BOOL := FALSE;
+END_VAR
+
+// Evaluate trigger conditions
+Pressure_High := PT_101 > MAX_PRESSURE;
+Flow_Low := FT_101 < MIN_FLOW;
+Temp_High := TT_101 > MAX_TEMPERATURE;
+
+// Main interlock logic
+IF NOT Manual_Reset THEN
+    IF Pressure_High OR Flow_Low THEN
+        MV_101_Open := FALSE;
+        SHUTDOWN_ACTIVE := TRUE;
+    END_IF;
+
+    IF Temp_High THEN
+        SHUTDOWN_ACTIVE := TRUE;
+        MV_101_Open := FALSE;
+    END_IF;
+ELSE
+    // Manual reset clears the shutdown condition
+    SHUTDOWN_ACTIVE := FALSE;
+END_IF;
+
+// Prevent automatic restart until manual reset is confirmed
+IF SHUTDOWN_ACTIVE THEN
+    MV_101_Open := FALSE;
+END_IF;

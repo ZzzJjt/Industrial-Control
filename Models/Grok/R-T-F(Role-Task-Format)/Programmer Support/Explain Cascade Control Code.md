@@ -1,52 +1,90 @@
-**Explain Cascade Control Code:**
-
-Explain the following code: PROGRAM CascadeControl VAR // Primary loop variables PV1: REAL; // Process variable: vessel pressure SP1: REAL; // Setpoint: target pressure OP1: REAL; // Output: secondary loop setpoint Kp1: REAL := 1.0; // Proportional gain Ki1: REAL := 0.1; // Integral gain Kd1: REAL := 0.05; // Derivative gain e1, e1_prev, e1_sum, e1_diff: REAL;
-
-// Secondary loop variables
-PV2: REAL; // Process variable: flow rate
-SP2: REAL; // Setpoint: target flow rate (OP1)
-OP2: REAL; // Output: control valve position
-Kp2: REAL := 2.0; // Proportional gain
-Ki2: REAL := 0.2; // Integral gain
-Kd2: REAL := 0.1; // Derivative gain
-e2, e2_prev, e2_sum, e2_diff: REAL;
-
-dt: TIME := t#100ms; // Sample time
-t_last: TIME;
+PROGRAM MixingRatioControl
+VAR
+    (* Inputs *)
+    Flow_A_PV : REAL; (* Measured flow rate of Reactant A (L/min) *)
+    Flow_B_PV : REAL; (* Measured flow rate of Reactant B (L/min) *)
+    
+    (* Parameters *)
+    Ratio_Setpoint : REAL := 2.0; (* Desired A:B flow ratio (2:1) *)
+    Tolerance : REAL := 0.05; (* Allowable deviation in ratio (e.g., 5%) *)
+    
+    (* Outputs *)
+    Flow_B_SP : REAL; (* Setpoint for Reactant B flow (L/min) *)
+    Actual_Ratio : REAL; (* Calculated A:B flow ratio *)
+    Ratio_Error : REAL; (* Error between actual and desired ratio *)
+    Ratio_Fault : BOOL := FALSE; (* TRUE if ratio deviates beyond tolerance *)
+    
+    (* Constraints *)
+    Flow_A_Max : REAL := 100.0; (* Maximum expected flow for A (L/min) *)
+    Flow_B_Max : REAL := 50.0; (* Maximum expected flow for B (L/min) *)
+    Flow_B_SP_Min : REAL := 0.0; (* Minimum setpoint for B (L/min) *)
+    Flow_B_SP_Max : REAL := 50.0; (* Maximum setpoint for B (L/min) *)
+    
+    (* Internal variables *)
+    ErrorCode : INT := 0; (* 0: Success, 1: Invalid input *)
 END_VAR
 
-METHOD RunCascadeControl // Read current pressure and flow rate values PV1 := ReadPressure(); PV2 := ReadFlowRate();
-// Primary loop: pressure control
-e1 := SP1 - PV1;
-e1_sum := e1_sum + e1 * dt;
-e1_diff := (e1 - e1_prev) / dt;
-OP1 := Kp1 * e1 + Ki1 * e1_sum + Kd1 * e1_diff;
-e1_prev := e1;
+(* Initialize outputs *)
+Flow_B_SP := Flow_B_SP_Min; (* Default to minimum setpoint for safety *)
+Actual_Ratio := 0.0;
+Ratio_Error := 0.0;
+Ratio_Fault := FALSE;
+ErrorCode := 0;
 
-// Limit OP1 to a valid range
-IF OP1 > 100.0 THEN
-    OP1 := 100.0;
-ELSIF OP1 < 0.0 THEN
-    OP1 := 0.0;
+(* Validate inputs *)
+IF NOT IS_VALID_REAL(Flow_A_PV) OR NOT IS_VALID_REAL(Flow_B_PV) OR
+   Flow_A_PV < 0.0 OR Flow_A_PV > Flow_A_Max OR
+   Flow_B_PV < 0.0 OR Flow_B_PV > Flow_B_Max THEN
+    (* Invalid or out-of-range inputs: use minimum setpoint *)
+    Flow_B_SP := Flow_B_SP_Min;
+    Actual_Ratio := 0.0;
+    Ratio_Error := 0.0;
+    Ratio_Fault := TRUE; (* Flag fault for invalid inputs *)
+    ErrorCode := 1;
+    RETURN;
 END_IF;
 
-// Secondary loop: flow control
-SP2 := OP1;
-e2 := SP2 - PV2;
-e2_sum := e2_sum + e2 * dt;
-e2_diff := (e2 - e2_prev) / dt;
-OP2 := Kp2 * e2 + Ki2 * e2_sum + Kd2 * e2_diff;
-e2_prev := e2;
-
-// Limit OP2 to a valid range
-IF OP2 > 100.0 THEN
-    OP2 := 100.0;
-ELSIF OP2 < 0.0 THEN
-    OP2 := 0.0;
+(* Calculate actual ratio (A:B) *)
+IF Flow_B_PV > 0.001 THEN (* Avoid division by zero *)
+    Actual_Ratio := Flow_A_PV / Flow_B_PV;
+ELSE
+    Actual_Ratio := 0.0; (* No flow in B: ratio undefined *)
 END_IF;
 
-// Set control valve position
-SetValvePosition(OP2);
-END_METHOD
+(* Compute required flow setpoint for Reactant B *)
+(* Flow_B_SP = Flow_A_PV / Ratio_Setpoint *)
+Flow_B_SP := Flow_A_PV / Ratio_Setpoint;
+
+(* Clamp setpoint within safe operational bounds *)
+IF Flow_B_SP > Flow_B_SP_Max THEN
+    Flow_B_SP := Flow_B_SP_Max;
+ELSIF Flow_B_SP < Flow_B_SP_Min THEN
+    Flow_B_SP := Flow_B_SP_Min;
+END_IF;
+
+(* Calculate ratio error for monitoring *)
+Ratio_Error := Actual_Ratio - Ratio_Setpoint;
+
+(* Check for ratio deviation *)
+IF ABS(Ratio_Error) > Tolerance THEN
+    Ratio_Fault := TRUE; (* Flag deviation beyond tolerance *)
+ELSE
+    Ratio_Fault := FALSE;
+END_IF;
+
+(* Validate output *)
+IF NOT IS_VALID_REAL(Flow_B_SP) THEN
+    Flow_B_SP := Flow_B_SP_Min;
+    Ratio_Fault := TRUE;
+    ErrorCode := 1;
+END_IF;
+
+(* Helper function to check if a REAL value is valid *)
+FUNCTION IS_VALID_REAL : BOOL
+VAR_INPUT
+    Value : REAL;
+END_VAR
+IS_VALID_REAL := NOT (Value = 0.0 / 0.0) AND NOT (Value = 1.0 / 0.0);
+END_FUNCTION
 
 END_PROGRAM

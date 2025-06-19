@@ -1,52 +1,71 @@
-**Explain Cascade Control Code:**
+VAR
+    // === Outer loop: Pressure Control ===
+    SP1 : REAL := 12.0;            // Pressure setpoint (e.g., bar)
+    PV1 : REAL;                    // Measured vessel pressure
+    e1 : REAL;                     // Pressure error
+    OP1 : REAL;                    // Output of pressure controller (setpoint for flow)
 
-Explain the following code: PROGRAM CascadeControl VAR // Primary loop variables PV1: REAL; // Process variable: vessel pressure SP1: REAL; // Setpoint: target pressure OP1: REAL; // Output: secondary loop setpoint Kp1: REAL := 1.0; // Proportional gain Ki1: REAL := 0.1; // Integral gain Kd1: REAL := 0.05; // Derivative gain e1, e1_prev, e1_sum, e1_diff: REAL;
+    Kp1 : REAL := 1.5;             // Pressure loop P gain
+    Ki1 : REAL := 0.4;             // Pressure loop I gain
+    Kd1 : REAL := 0.2;             // Pressure loop D gain
 
-// Secondary loop variables
-PV2: REAL; // Process variable: flow rate
-SP2: REAL; // Setpoint: target flow rate (OP1)
-OP2: REAL; // Output: control valve position
-Kp2: REAL := 2.0; // Proportional gain
-Ki2: REAL := 0.2; // Integral gain
-Kd2: REAL := 0.1; // Derivative gain
-e2, e2_prev, e2_sum, e2_diff: REAL;
+    I1 : REAL := 0.0;              // Pressure loop integral
+    D1 : REAL;                     // Pressure loop derivative
+    e1_prev : REAL := 0.0;
 
-dt: TIME := t#100ms; // Sample time
-t_last: TIME;
+    // === Inner loop: Flow Control ===
+    SP2 : REAL;                    // Flow setpoint (from OP1)
+    PV2 : REAL;                    // Measured flow rate
+    e2 : REAL;                     // Flow error
+    OP2 : REAL;                    // Output of flow controller (valve position)
+
+    Kp2 : REAL := 2.0;             // Flow loop P gain
+    Ki2 : REAL := 0.6;             // Flow loop I gain
+    Kd2 : REAL := 0.1;             // Flow loop D gain
+
+    I2 : REAL := 0.0;              // Flow loop integral
+    D2 : REAL;                     // Flow loop derivative
+    e2_prev : REAL := 0.0;
+
+    // === Common settings ===
+    dt : REAL := 0.1;              // Sample time in seconds
+    OP_MIN : REAL := 0.0;
+    OP_MAX : REAL := 100.0;
 END_VAR
 
-METHOD RunCascadeControl // Read current pressure and flow rate values PV1 := ReadPressure(); PV2 := ReadFlowRate();
-// Primary loop: pressure control
+// === Read process values ===
+PV1 := ReadPressure();             // Replace with actual pressure sensor reading
+PV2 := ReadFlowRate();            // Replace with actual flow sensor reading
+
+// === Outer loop PID: Pressure ===
 e1 := SP1 - PV1;
-e1_sum := e1_sum + e1 * dt;
-e1_diff := (e1 - e1_prev) / dt;
-OP1 := Kp1 * e1 + Ki1 * e1_sum + Kd1 * e1_diff;
+I1 := I1 + e1 * dt;
+D1 := (e1 - e1_prev) / dt;
+OP1 := (Kp1 * e1) + (Ki1 * I1) + (Kd1 * D1);
 e1_prev := e1;
 
-// Limit OP1 to a valid range
-IF OP1 > 100.0 THEN
-    OP1 := 100.0;
-ELSIF OP1 < 0.0 THEN
-    OP1 := 0.0;
+// Clamp outer loop output
+IF OP1 > OP_MAX THEN
+    OP1 := OP_MAX;
+ELSIF OP1 < OP_MIN THEN
+    OP1 := OP_MIN;
 END_IF;
 
-// Secondary loop: flow control
-SP2 := OP1;
+SP2 := OP1; // Inner loop setpoint from outer loop output
+
+// === Inner loop PID: Flow ===
 e2 := SP2 - PV2;
-e2_sum := e2_sum + e2 * dt;
-e2_diff := (e2 - e2_prev) / dt;
-OP2 := Kp2 * e2 + Ki2 * e2_sum + Kd2 * e2_diff;
+I2 := I2 + e2 * dt;
+D2 := (e2 - e2_prev) / dt;
+OP2 := (Kp2 * e2) + (Ki2 * I2) + (Kd2 * D2);
 e2_prev := e2;
 
-// Limit OP2 to a valid range
-IF OP2 > 100.0 THEN
-    OP2 := 100.0;
-ELSIF OP2 < 0.0 THEN
-    OP2 := 0.0;
+// Clamp inner loop output
+IF OP2 > OP_MAX THEN
+    OP2 := OP_MAX;
+ELSIF OP2 < OP_MIN THEN
+    OP2 := OP_MIN;
 END_IF;
 
-// Set control valve position
-SetValvePosition(OP2);
-END_METHOD
-
-END_PROGRAM
+// === Actuator Output ===
+SetValvePosition(OP2);            // Replace with actual valve control function

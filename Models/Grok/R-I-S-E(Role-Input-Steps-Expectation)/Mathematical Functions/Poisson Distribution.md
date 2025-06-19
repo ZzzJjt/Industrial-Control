@@ -1,4 +1,12 @@
-**Poisson Distribution:**
+Cause / Effect                  | Compute Probability | Set Error | Log Event | Set Probability to 0.0
+--------------------------------|--------------------|-----------|-----------|------------------------
+Valid Inputs (λ > 0, k ≥ 0)     | X                  |           | X         | 
+Invalid Input (λ ≤ 0, k < 0)    |                    | X (1)     | X         | X
+Overflow (e⁻λ, λᵏ, result)      |                    | X (2)     | X         | X
+Factorial Overflow (k > 20)     |                    | X (3)     | X         | X
 
-Design a self-contained function block in IEC 61131-3 Structured Text to compute the Poisson distribution for a given mean (λ) and input value. Ensure that the function block is structured for clarity, with comments explaining the mathematical basis of the Poisson distribution and the computational steps involved. Address potential limitations, such as handling large values of λ, and discuss the practical applications of the Poisson distribution in industrial systems, particularly in the context of event-driven processes.
-
+Legend:
+- Compute Probability: Executes Poisson formula
+- Set Error: Sets Error := TRUE, ErrorID
+- Log Event: Records event to AuditMessage
+- Set Probability to 0.0: Sets Probability to 0.0

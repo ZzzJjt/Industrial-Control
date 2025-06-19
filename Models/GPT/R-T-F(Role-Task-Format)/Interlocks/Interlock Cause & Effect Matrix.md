@@ -1,4 +1,26 @@
-**Interlock Cause & Effect Matrix:**
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{margin=1in}
+\begin{document}
 
-Develop a cause and effect matrix for the interlocks required in a chemical reactor system. Each row should represent a specific cause linked to sensor values such as pressure, temperature, or level, while each column should represent the corresponding effect related to actuator actions such as closing valves, stopping pumps, or triggering alarms. Once the matrix is complete, write a detailed explanation of how these interlocks ensure the safety and stability of the reactor operation. Discuss how each interlock action prevents hazardous conditions and safeguards the equipment during abnormal process situations.
+\section*{Cause and Effect Matrix for Chemical Reactor Interlocks}
 
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{Cause} & \textbf{Close Feed Valve} & \textbf{Stop Agitator} & \textbf{Open Relief Valve} & \textbf{Shutdown Heater} & \textbf{Activate Alarm} & \textbf{Emergency Shutdown (ESD)} \\
+\midrule
+High Pressure (>10 bar)       & X & X & X & X & X & X \\
+Low Temperature (<60\,°C)     &   &   &   & X & X &   \\
+Low Level in Reactor          & X &   &   & X & X &   \\
+High Temperature (>120\,°C)   & X & X & X & X & X & X \\
+Agitator Motor Fault          &   & X &   &   & X &   \\
+Heater Overcurrent            &   &   &   & X & X &   \\
+Cooling Water Flow Loss       & X & X & X & X & X & X \\
+Pressure Transmitter Fault    & X &   &   &   & X &   \\
+Level Transmitter Fault       & X &   &   &   & X &   \\
+Emergency Stop Button Pressed & X & X & X & X & X & X \\
+\bottomrule
+\end{tabular}
+
+\end{document}

@@ -1,12 +1,87 @@
-**Shutdown Steel Production:**
+FUNCTION_BLOCK FB_GasFlowRampDown
+VAR_INPUT
+    StartFlow : REAL;         // Initial gas flow in Nm³/h
+    EndFlow   : REAL;         // Target gas flow
+    Duration  : TIME;         // Total ramp time
+    Start     : BOOL;         // Trigger input
+END_VAR
+VAR_OUTPUT
+    FlowSetpoint : REAL;      // Output setpoint
+    Done         : BOOL;
+END_VAR
+VAR
+    RampTimer    : TON;
+    TimeElapsed  : TIME;
+    Slope        : REAL;
+END_VAR
 
-Develop a comprehensive list of steps for the controlled shutdown of a steel production facility. Include key stages such as reducing furnace temperature, controlling gas flow rates, and maintaining safe oxygen levels throughout the shutdown process.
+IF Start AND NOT Done THEN
+    RampTimer(IN := TRUE, PT := Duration);
+    TimeElapsed := RampTimer.ET;
 
-Provide a detailed control narrative for steps 4 to 6 of the shutdown sequence, specifying concrete ranges and setpoints for variables such as temperature, gas flow, and oxygen levels.
+    Slope := (EndFlow - StartFlow) / TO_REAL(TO_TIME(Duration) / T#1s);
+    FlowSetpoint := StartFlow + Slope * TO_REAL(TimeElapsed / T#1s);
 
-Write a self-contained IEC 61131-3 Structured Text program based on this control narrative, ensuring proper sequencing and safety protocols.
+    IF RampTimer.Q THEN
+        RampTimer(IN := FALSE);
+        FlowSetpoint := EndFlow;
+        Done := TRUE;
+    END_IF
+END_IF
 
-Additionally, create a function in IEC 61131-3 to gradually reduce the fuel gas flow rate to the furnace burners over a period of 12 hours. This function should incorporate timing and safety checks to ensure smooth transitions.
+FUNCTION_BLOCK FB_OxygenControl
+VAR_INPUT
+    FuelFlow        : REAL;     // Current gas flow in Nm³/h
+    TargetRatio     : REAL;     // Target fuel-to-air ratio (e.g., 1:2.5)
+END_VAR
+VAR_OUTPUT
+    OxygenSetpoint  : REAL;     // Output oxygen setpoint
+END_VAR
 
-Lastly, write an IEC 61131-3 function for adjusting the oxygen supply to the burners to maintain a precise fuel-to-air ratio of 1:2.5 during the shutdown. Ensure the function is adaptable to fluctuations in gas flow and temperature, and include safeguards for maintaining combustion efficiency.
+OxygenSetpoint := FuelFlow * TargetRatio;
 
+VAR
+    Step               : INT := 4;
+    FurnaceTemp        : REAL;
+    FuelFlowCurrent    : REAL := 100.0;
+
+    RampFlow           : FB_GasFlowRampDown;
+    OxygenCtrl         : FB_OxygenControl;
+
+    FinalGasFlow       : REAL;
+    OxygenSetpoint     : REAL;
+
+    ShutdownTimer      : TON;
+    StepDone           : BOOL;
+END_VAR
+
+CASE Step OF
+
+4: // Lower Furnace Temperature
+    IF FurnaceTemp > 400.0 THEN
+        RampFlow(StartFlow := 100.0, EndFlow := 0.0, Duration := T#12h, Start := TRUE);
+        FinalGasFlow := RampFlow.FlowSetpoint;
+        IF RampFlow.Done THEN
+            Step := 5;
+        END_IF
+    ELSE
+        Step := 5;
+    END_IF
+
+5: // Adjust Oxygen Level to Maintain 1:2.5 Ratio
+    FuelFlowCurrent := FinalGasFlow;
+    OxygenCtrl(FuelFlow := FuelFlowCurrent, TargetRatio := 2.5);
+    OxygenSetpoint := OxygenCtrl.OxygenSetpoint;
+
+    IF OxygenSetpoint <= 50.0 THEN // Arbitrary threshold
+        Step := 6;
+    END_IF
+
+6: // Wait for Burnout Period (e.g., 30 min hold)
+    ShutdownTimer(IN := TRUE, PT := T#30m);
+    IF ShutdownTimer.Q THEN
+        ShutdownTimer(IN := FALSE);
+        StepDone := TRUE;
+    END_IF
+
+END_CASE

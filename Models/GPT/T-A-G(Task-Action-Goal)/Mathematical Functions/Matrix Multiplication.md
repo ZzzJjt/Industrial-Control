@@ -1,4 +1,24 @@
-**Matrix Multiplication:**
+FUNCTION_BLOCK MatrixMultiply4x4
+VAR_INPUT
+    MatrixA : ARRAY[1..4, 1..4] OF REAL;
+    MatrixB : ARRAY[1..4, 1..4] OF REAL;
+END_VAR
+VAR_OUTPUT
+    MatrixC : ARRAY[1..4, 1..4] OF REAL;
+END_VAR
+VAR
+    i : INT; // Row index for MatrixA
+    j : INT; // Column index for MatrixB
+    k : INT; // Index for dot product
+END_VAR
 
-Develop a self-contained function block in IEC 61131-3 to perform multiplication of two 4x4 matrices. Ensure that the implementation adheres to the standards of structured text programming and includes detailed comments explaining each part of the process. Discuss the computational complexity and potential limitations when scaling this approach to larger matrices.
-
+// Matrix multiplication logic
+// MatrixC[i,j] = Sum(MatrixA[i,k] * MatrixB[k,j]) for k = 1..4
+FOR i := 1 TO 4 DO
+    FOR j := 1 TO 4 DO
+        MatrixC[i,j] := 0.0; // Initialize accumulator to zero
+        FOR k := 1 TO 4 DO
+            MatrixC[i,j] := MatrixC[i,j] + MatrixA[i,k] * MatrixB[k,j];
+        END_FOR;
+    END_FOR;
+END_FOR;

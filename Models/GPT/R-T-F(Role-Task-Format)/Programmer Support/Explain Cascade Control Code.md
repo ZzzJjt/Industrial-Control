@@ -1,52 +1,16 @@
-**Explain Cascade Control Code:**
+e1 := SP1 - PV1;                          // Pressure error
+e1_sum := e1_sum + e1 * dt;              // Integral of pressure error
+e1_diff := (e1 - e1_prev) / dt;          // Derivative of pressure error
 
-Explain the following code: PROGRAM CascadeControl VAR // Primary loop variables PV1: REAL; // Process variable: vessel pressure SP1: REAL; // Setpoint: target pressure OP1: REAL; // Output: secondary loop setpoint Kp1: REAL := 1.0; // Proportional gain Ki1: REAL := 0.1; // Integral gain Kd1: REAL := 0.05; // Derivative gain e1, e1_prev, e1_sum, e1_diff: REAL;
+OP1 := Kp1 * e1 + Ki1 * e1_sum + Kd1 * e1_diff;  // PID output for pressure
+OP1 := LIMIT(OP1, 0.0, 100.0);           // Clamp output to safe range (0–100%)
 
-// Secondary loop variables
-PV2: REAL; // Process variable: flow rate
-SP2: REAL; // Setpoint: target flow rate (OP1)
-OP2: REAL; // Output: control valve position
-Kp2: REAL := 2.0; // Proportional gain
-Ki2: REAL := 0.2; // Integral gain
-Kd2: REAL := 0.1; // Derivative gain
-e2, e2_prev, e2_sum, e2_diff: REAL;
+SP2 := OP1;                              // Setpoint for flow loop from pressure controller
+e2 := SP2 - PV2;                         // Flow error
+e2_sum := e2_sum + e2 * dt;              // Integral of flow error
+e2_diff := (e2 - e2_prev) / dt;          // Derivative of flow error
 
-dt: TIME := t#100ms; // Sample time
-t_last: TIME;
-END_VAR
+OP2 := Kp2 * e2 + Ki2 * e2_sum + Kd2 * e2_diff;  // PID output for flow
+OP2 := LIMIT(OP2, 0.0, 100.0);           // Clamp output to safe range
 
-METHOD RunCascadeControl // Read current pressure and flow rate values PV1 := ReadPressure(); PV2 := ReadFlowRate();
-// Primary loop: pressure control
-e1 := SP1 - PV1;
-e1_sum := e1_sum + e1 * dt;
-e1_diff := (e1 - e1_prev) / dt;
-OP1 := Kp1 * e1 + Ki1 * e1_sum + Kd1 * e1_diff;
-e1_prev := e1;
-
-// Limit OP1 to a valid range
-IF OP1 > 100.0 THEN
-    OP1 := 100.0;
-ELSIF OP1 < 0.0 THEN
-    OP1 := 0.0;
-END_IF;
-
-// Secondary loop: flow control
-SP2 := OP1;
-e2 := SP2 - PV2;
-e2_sum := e2_sum + e2 * dt;
-e2_diff := (e2 - e2_prev) / dt;
-OP2 := Kp2 * e2 + Ki2 * e2_sum + Kd2 * e2_diff;
-e2_prev := e2;
-
-// Limit OP2 to a valid range
-IF OP2 > 100.0 THEN
-    OP2 := 100.0;
-ELSIF OP2 < 0.0 THEN
-    OP2 := 0.0;
-END_IF;
-
-// Set control valve position
-SetValvePosition(OP2);
-END_METHOD
-
-END_PROGRAM
+SetValvePosition(OP2);                   // Send final output to control valve

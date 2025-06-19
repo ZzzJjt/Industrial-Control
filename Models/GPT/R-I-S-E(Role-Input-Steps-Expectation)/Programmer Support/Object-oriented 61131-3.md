@@ -1,5 +1,26 @@
-**Object-oriented 61131-3:**
-Discuss the concept of classes and methods introduced in IEC 61131-3 Version 3.0, including a detailed explanation of their limitations, advantages, and disadvantages in the context of industrial automation. Provide a relevant example to illustrate these concepts in practice.
+FUNCTION_BLOCK FB_Actuator
+VAR
+    IsOn : BOOL := FALSE;
+END_VAR
 
-Explain how inheritance is implemented in IEC 61131-3, building on the previous example to show how derived classes can extend base functionality. Additionally, refine the example further to demonstrate polymorphism within this framework, discussing its practical applications and constraints.
+METHOD PUBLIC SwitchOn
+    IsOn := TRUE;
+END_METHOD
 
+METHOD PUBLIC SwitchOff
+    IsOn := FALSE;
+END_METHOD
+
+FUNCTION_BLOCK FB_Valve EXTENDS FB_Actuator
+VAR
+    Opening : REAL := 0.0; // 0–100% valve opening
+END_VAR
+
+METHOD PUBLIC SetOpening
+VAR_INPUT
+    Value : REAL;
+END_VAR
+    IF Value >= 0.0 AND Value <= 100.0 THEN
+        Opening := Value;
+    END_IF
+END_METHOD

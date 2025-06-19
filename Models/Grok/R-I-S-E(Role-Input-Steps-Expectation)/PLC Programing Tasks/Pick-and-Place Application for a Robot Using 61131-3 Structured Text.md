@@ -1,22 +1,23 @@
-**Pick-and-Place Application for a Robot Using 61131-3 Structured Text:**
+Cause / Effect                  | Set ManualMode | Set AutoMode | Execute Clip | Execute Transfer | Execute Release | Reset Timer/State | Set Error | Log Event
+--------------------------------|----------------|--------------|--------------|------------------|-----------------|-------------------|-----------|-----------
+BtnManual Pressed               | X              |              |              |                  |                 |                   |           | X
+BtnAuto Pressed                 |                | X            |              |                  |                 |                   |           | X
+Both BtnManual and BtnAuto      |                |              |              |                  |                 |                   | X (1)     | X
+ManualMode, CmdClip             |                |              | X            |                  |                 |                   |           | X
+ManualMode, CmdTransfer         |                |              |              | X                |                 |                   |           | X
+ManualMode, CmdRelease          |                |              |              |                  | X               |                   |           | X
+AutoMode, BtnAuto Rising Edge   |                |              | X (State 0)  |                  |                 |                   |           | X
+AutoMode, State 1, Timer Running|                |              |              | X                |                 |                   |           | X
+AutoMode, State 1, Timer Done   |                |              |              |                  | X (State 2)     |                   |           | X
+AutoMode, State 2 Complete      |                |              |              |                  |                 | X                 |           | X
+Sensor Fault (Extendable)       |                |              |              |                  |                 |                   | X (2)     | X
 
-Write a PLC program in structured text (ST) according to IEC 61131-3 standards for a pick-and-place robotic application with two conveyors, following the process described below:
-
-Process Description:
-
-The system operates in two modes: Manual Mode and Auto Mode. These modes are interlocked, meaning only one can be active at any time.
-
-	1.	Manual Mode:
-	•	When the Manual button is pressed, the robotic arm will execute the following steps in response to individual manual commands:
-	•	Clip: Clip the product from conveyor A.
-	•	Transfer: Move the product to conveyor B.
-	•	Release: Release the product onto conveyor B, allowing it to be carried away.
-	2.	Auto Mode:
-	•	When the Auto button is pressed, the robotic arm will execute the entire pick-and-place process automatically:
-	•	Clip: Clip the product from conveyor A and hold it.
-	•	Transfer: Transfer the product to conveyor B (this action takes 2 seconds).
-	•	Release: Release the product onto conveyor B.
-	•	The auto process completes after one cycle, but can be re-triggered by pressing the Auto button again.
-
-The system should ensure that manual and auto modes cannot operate simultaneously, using interlocking logic to prevent conflicts between the two modes.
-
+Legend:
+- Set ManualMode: Sets ManualMode := TRUE, AutoMode := FALSE
+- Set AutoMode: Sets AutoMode := TRUE, ManualMode := FALSE
+- Execute Clip: Sets Clip := TRUE
+- Execute Transfer: Sets Transfer := TRUE
+- Execute Release: Sets Release := TRUE
+- Reset Timer/State: Resets AutoTimer, State, AutoTrigger
+- Set Error: Sets Error := TRUE, ErrorID
+- Log Event: Records event to AuditMessage

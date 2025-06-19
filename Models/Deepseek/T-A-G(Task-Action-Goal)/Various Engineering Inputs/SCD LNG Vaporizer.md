@@ -1,3 +1,37 @@
-**SCD LNG Vaporizer:**
-
-Create a NORSOK system control diagram (SCD) in textual notation for a LNG Vaporizer System. Include instrumentation, control loops, and interlocks. Provide concrete tag numbers and piping.
++----------------------------------------------------------------------------------------------------------------------+
+|                                                                                                                      |
+|                                            +-------------------+                                                       |
+|                                            |  LNG Storage Tank   |                                                       |
+|                                            |  FT101 (m³/h)       |                                                       |
+|                                            +---------+---------+                                                       |
+|                                                      |                                                                       |
+|                                                      v                                                                       |
+|                                            +---------+---------+                                                       |
+|                                            |  LNG Inlet Valve    |                                                       |
+|                                            |  LVV101             |                                                       |
+|                                            +---------+---------+                                                       |
+|                                                      |                                                                       |
+|                                                      v                                                                       |
+|                                            +---------+---------+                                                       |
+|                                            |  LNG Vaporizer      |                                                       |
+|                                            |  TT101 (°C)       |                                                       |
+|                                            |  TIC101           |                                                       |
+|                                            |  TCV101 (% Opening)|                                                       |
+|                                            |  FT201 (m³/h)       |                                                       |
+|                                            |  FIC201           |                                                       |
+|                                            |  FCV201 (% Opening)|                                                       |
+|                                            +---------+---------+                                                       |
+|                                                      |                                                                       |
+|                                                      v                                                                       |
+|                                            +---------+---------+                                                       |
+|                                            |  Gas Outlet Valve   |                                                       |
+|                                            |  GOV101             |                                                       |
+|                                            +---------+---------+                                                       |
+|                                                      |                                                                       |
+|                                                      v                                                                       |
+|                                            +---------+---------+                                                       |
+|                                            |  Gas Outlet Meter   |                                                       |
+|                                            |  FT301 (m³/h)       |                                                       |
+|                                            +-------------------+                                                       |
+|                                                                                                                      |
++----------------------------------------------------------------------------------------------------------------------+

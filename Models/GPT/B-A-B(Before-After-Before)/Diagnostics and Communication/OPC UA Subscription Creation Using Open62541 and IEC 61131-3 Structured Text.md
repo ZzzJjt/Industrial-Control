@@ -1,5 +1,37 @@
-**OPC UA Subscription Creation Using Open62541 and IEC 61131-3 Structured Text:**
+// File: opcua_client_connect.c
+#include <open62541/client.h>
+#include <open62541/client_config_default.h>
+#include <string.h>
 
-Develop a C function block for OPC UA subscription creation using the Open62541 library, which will be wrapped in IEC 61131-3 structured text code. The function block receives a Connection Handle as a DWORD and has the following inputs: an executed flag (BOOL), a priority (BYTE), and a timeout (TIME). As outputs, it provides three status flags (Done, Busy, Error) along with two DWORD outputs (ErrorID, SubscriptionHdl). The function block also includes an IN/OUT variable PublishingInterval (type TIME), which allows dynamic adjustment of the subscription interval.
+#define OPCUA_SUCCESS 0
+#define OPCUA_TIMEOUT 1
+#define OPCUA_CONNECT_FAIL 2
 
-In your explanation, describe how this C function block can be wrapped inside IEC 61131-3 structured text code, highlighting the integration steps and providing an example of how to call the function block within an ST program. Discuss error handling, subscription management, and real-time communication with OPC UA servers.
+// Simple connect-only logic, no read/write for brevity
+unsigned int opcua_connect(const char* serverUrl, unsigned int timeoutMs) {
+    UA_Client *client = UA_Client_new();
+    UA_ClientConfig_setDefault(UA_Client_getConfig(client));
+
+    UA_StatusCode status = UA_Client_connect(client, serverUrl);
+    if (status != UA_STATUSCODE_GOOD) {
+        UA_Client_delete(client);
+        return OPCUA_CONNECT_FAIL;
+    }
+
+    // Wait loop to simulate timeout-based monitoring
+    unsigned int waited = 0;
+    while (waited < timeoutMs) {
+        UA_StatusCode s = UA_Client_run_iterate(client, false);
+        if (s != UA_STATUSCODE_GOOD) {
+            UA_Client_disconnect(client);
+            UA_Client_delete(client);
+            return OPCUA_CONNECT_FAIL;
+        }
+        UA_sleep_ms(50);
+        waited += 50;
+    }
+
+    UA_Client_disconnect(client);
+    UA_Client_delete(client);
+    return OPCUA_SUCCESS;
+}

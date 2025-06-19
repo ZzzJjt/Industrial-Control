@@ -1,6 +1,23 @@
-**Feedforward Control Mixing:**
+VAR
+    // Inputs
+    Desired_Ratio      : REAL := 2.0;    // Target A:B mixing ratio
+    Flow_B             : REAL;           // Measured flow of Reactant B (e.g., L/min)
+    Concentration_B    : REAL := 0.8;    // Optional: concentration of Reactant B
+    Temperature_B      : REAL := 25.0;   // Optional: temperature of Reactant B in °C
 
-Develop a self-contained IEC 61131-3 Structured Text program (not a function block) to implement feedforward control for mixing two reactants in a chemical process. The program should predict the necessary adjustments to the flow rates of each reactant based on known disturbances or input changes, ensuring optimal mixing conditions.
+    // Compensation and output
+    Compensation_Factor : REAL := 1.0;   // Factor to compensate based on optional conditions
+    Flow_A_Setpoint     : REAL;          // Calculated flow setpoint for Reactant A
+END_VAR
 
-Include logic that calculates the required feedforward adjustments based on process variables such as flow rates, concentration, and temperature, and ensure the control system can respond quickly to input changes without relying solely on feedback. Discuss the advantages of using feedforward control in mixing processes, particularly in terms of improving response time and reducing process variability compared to traditional feedback control.
+// Optional: dynamic compensation logic
+IF Concentration_B < 0.9 THEN
+    Compensation_Factor := 1.05;  // Slightly increase A if B is too dilute
+ELSIF Temperature_B > 30.0 THEN
+    Compensation_Factor := 0.95;  // Reduce A flow if B is too hot (evaporation concern)
+ELSE
+    Compensation_Factor := 1.0;   // Default compensation
+END_IF
 
+// Feedforward calculation for Reactant A
+Flow_A_Setpoint := Desired_Ratio * Flow_B * Compensation_Factor;

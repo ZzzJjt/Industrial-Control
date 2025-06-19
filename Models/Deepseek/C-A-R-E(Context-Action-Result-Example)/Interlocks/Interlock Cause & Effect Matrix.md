@@ -1,4 +1,93 @@
-**Interlock Cause & Effect Matrix:**
+FUNCTION_BLOCK InterlockEvaluation
+VAR_INPUT
+    HighPressure : BOOL; // Input signal for high pressure condition
+    LowLevel : BOOL; // Input signal for low level condition
+    HighTemperature : BOOL; // Input signal for high temperature condition
+    LowTemperature : BOOL; // Input signal for low temperature condition
+    PressureSensorFault : BOOL; // Input signal for pressure sensor fault
+    TemperatureSensorFault : BOOL; // Input signal for temperature sensor fault
+    LevelSensorFault : BOOL; // Input signal for level sensor fault
+    AgitatorFault : BOOL; // Input signal for agitator fault
+    Overheating : BOOL; // Input signal for overheating condition
+    Underheating : BOOL; // Input signal for underheating condition
+    LevelOverflow : BOOL; // Input signal for level overflow condition
+END_VAR
 
-Develop a cause and effect matrix for the interlocks required in a chemical reactor system. Each row should represent a specific cause linked to sensor values such as pressure, temperature, or level, while each column should represent the corresponding effect related to actuator actions such as closing valves, stopping pumps, or triggering alarms. Once the matrix is complete, write a detailed explanation of how these interlocks ensure the safety and stability of the reactor operation. Discuss how each interlock action prevents hazardous conditions and safeguards the equipment during abnormal process situations.
+VAR_OUTPUT
+    CloseFeedValve : BOOL; // Output signal to close feed valve
+    StopFeedPump : BOOL; // Output signal to stop feed pump
+    ActivateReliefSystem : BOOL; // Output signal to activate relief system
+    IssueHighPressureAlarm : BOOL; // Output signal to issue high-pressure alarm
+    CloseProductValve : BOOL; // Output signal to close product valve
+    StopCirculationPump : BOOL; // Output signal to stop circulation pump
+    IsolateReactor : BOOL; // Output signal to isolate reactor
+    IssueLowLevelAlarm : BOOL; // Output signal to issue low-level alarm
+    IssueHighTemperatureAlarm : BOOL; // Output signal to issue high-temperature alarm
+    IssueLowTemperatureAlarm : BOOL; // Output signal to issue low-temperature alarm
+    IssueSensorFaultAlarm : BOOL; // Output signal to issue sensor fault alarm
+END_VAR
+
+// Main execution logic
+CloseFeedValve := FALSE;
+StopFeedPump := FALSE;
+ActivateReliefSystem := FALSE;
+IssueHighPressureAlarm := FALSE;
+CloseProductValve := FALSE;
+StopCirculationPump := FALSE;
+IsolateReactor := FALSE;
+IssueLowLevelAlarm := FALSE;
+IssueHighTemperatureAlarm := FALSE;
+IssueLowTemperatureAlarm := FALSE;
+IssueSensorFaultAlarm := FALSE;
+
+IF HighPressure THEN
+    CloseFeedValve := TRUE;
+    StopFeedPump := TRUE;
+    ActivateReliefSystem := TRUE;
+    IssueHighPressureAlarm := TRUE;
+END_IF;
+
+IF LowLevel THEN
+    CloseProductValve := TRUE;
+    StopCirculationPump := TRUE;
+    IsolateReactor := TRUE;
+    IssueLowLevelAlarm := TRUE;
+END_IF;
+
+IF HighTemperature THEN
+    StopCirculationPump := TRUE;
+    IssueHighTemperatureAlarm := TRUE;
+END_IF;
+
+IF LowTemperature THEN
+    StopCirculationPump := TRUE;
+    IssueLowTemperatureAlarm := TRUE;
+END_IF;
+
+IF PressureSensorFault OR TemperatureSensorFault OR LevelSensorFault THEN
+    IssueSensorFaultAlarm := TRUE;
+END_IF;
+
+IF AgitatorFault THEN
+    StopCirculationPump := TRUE;
+    IsolateReactor := TRUE;
+END_IF;
+
+IF Overheating THEN
+    StopCirculationPump := TRUE;
+    IssueHighTemperatureAlarm := TRUE;
+END_IF;
+
+IF Underheating THEN
+    StopCirculationPump := TRUE;
+    IssueLowTemperatureAlarm := TRUE;
+END_IF;
+
+IF LevelOverflow THEN
+    CloseProductValve := TRUE;
+    ActivateReliefSystem := TRUE;
+    IssueLowLevelAlarm := TRUE;
+END_IF;
+
+
 

@@ -1,14 +1,93 @@
-**Translate ST To Instruction List:**
+// --- Mode Selection ---
+LD ManualButton
+JMPC SetManual
 
-Translate the following 61131-3 Structured Text program to 61131-3 Instruction List: PROGRAM PickAndPlace VAR ManualButton : BOOL; // Input signal for manual mode AutoButton : BOOL; // Input signal for auto mode ClipButton : BOOL; // Input signal for clip action TransferButton : BOOL; // Input signal for transfer action ReleaseButton : BOOL; // Input signal for release action ConveyorA : BOOL; // Input signal for presence of product on conveyor A ConveyorB : BOOL; // Output signal to control conveyor B RoboticArm : BOOL; // Output signal to control the robotic arm Mode : INT := 0; // Internal variable to store the current mode (0 = manual, 1 = auto) AutoProcess : BOOL := FALSE; // Internal variable to store whether the auto control process is currently running END_VAR
+LD AutoButton
+JMPC SetAuto
+JMP ModeCheck
 
-// Manual mode control process IF ManualButton THEN Mode := 0; // Set mode to manual END_IF
+SetManual:
+LD 0
+ST Mode
+JMP ModeCheck
 
-IF Mode = 0 THEN // Manual mode IF ClipButton AND ConveyorA THEN RoboticArm := TRUE; // Clip the product ELSIF TransferButton THEN ConveyorB := TRUE; // Transfer the product to conveyor B ELSIF ReleaseButton THEN ConveyorB := FALSE; // Release the product from conveyor B END_IF END_IF
+SetAuto:
+LD 1
+ST Mode
 
-// Auto mode control process IF AutoButton THEN Mode := 1; // Set mode to auto END_IF
+ModeCheck:
+// --- If Mode = 1, proceed with auto sequence ---
+LD Mode
+EQ 1
+JMPC AutoStart
+JMP EndCycle
 
-IF Mode = 1 THEN // Auto mode IF NOT AutoProcess AND ConveyorA THEN // Only start the process if not currently running and there is a product on conveyor A AutoProcess := TRUE; // Set flag to indicate that the auto process is running RoboticArm := TRUE; // Clip the product WAIT 2; // Wait for 2 seconds to transfer the product ConveyorB := TRUE; // Transfer the product to conveyor B END_IF IF ConveyorB AND NOT ConveyorA THEN // Release the product from conveyor B once it has been transferred and there is no product on conveyor A ConveyorB := FALSE; AutoProcess := FALSE; // Clear the flag to indicate that the auto process is not running END_IF END_IF
+AutoStart:
+// CASE Step OF
 
+LD Step
+EQ 0
+JMPC Step0
 
+LD Step
+EQ 1
+JMPC Step1
 
+LD Step
+EQ 2
+JMPC Step2
+
+LD Step
+EQ 3
+JMPC Step3
+
+Step0:
+LD TRUE
+ST ConveyorRun
+LD SensorAtPick
+JMPC ToStep1
+JMP EndCycle
+
+ToStep1:
+LD 1
+ST Step
+JMP EndCycle
+
+Step1:
+LD FALSE
+ST ConveyorRun
+LD TRUE
+ST ArmPick
+LD ArmPickDone
+JMPC ToStep2
+JMP EndCycle
+
+ToStep2:
+LD FALSE
+ST ArmPick
+LD 2
+ST Step
+JMP EndCycle
+
+Step2:
+LD TRUE
+ST ArmPlace
+LD ArmPlaceDone
+JMPC ToStep3
+JMP EndCycle
+
+ToStep3:
+LD FALSE
+ST ArmPlace
+LD 3
+ST Step
+JMP EndCycle
+
+Step3:
+LD FALSE
+ST ArmPlace
+LD 0
+ST Step
+
+EndCycle:
+NOP

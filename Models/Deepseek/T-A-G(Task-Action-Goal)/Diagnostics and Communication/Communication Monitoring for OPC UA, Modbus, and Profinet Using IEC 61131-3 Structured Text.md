@@ -1,3 +1,110 @@
-**Communication Monitoring for OPC UA, Modbus, and Profinet Using IEC 61131-3 Structured Text:**
+FUNCTION_BLOCK COMMUNICATION_MONITOR
+VAR_INPUT
+    ENABLE : BOOL; // Enable monitoring
+END_VAR
 
-Develop a function block in structured text (ST) as per IEC 61131-3 standards to monitor communication connections to an OPC UA server, Modbus server, and Profinet in a machine system. The function block should continuously check the connection status of each protocol, and if any connection fails, an alarm should be triggered. Additionally, when a connection is lost, an entry must be created in the audit trail, detailing the reason for the server being down along with the corresponding error code. Discuss the implementation logic for monitoring multiple protocols, error detection, and how to effectively manage and log communication failures for real-time monitoring and troubleshooting.
+VAR_OUTPUT
+    ALARM : BOOL; // Alarm signal if any connection fails
+    AUDIT_TRAIL : ARRAY[1..10] OF STRING[100]; // Audit trail entries
+    NUM_ENTRIES : INT; // Number of audit trail entries
+END_VAR
+
+VAR
+    opcua_connected : BOOL := FALSE;
+    modbus_connected : BOOL := FALSE;
+    profinet_connected : BOOL := FALSE;
+    last_opcua_status : BOOL := FALSE;
+    last_modbus_status : BOOL := FALSE;
+    last_profinet_status : BOOL := FALSE;
+    max_audit_entries : INT := 10;
+END_VAR
+
+METHOD CheckOPCUAConnection : BOOL
+BEGIN
+    // Simulate checking OPC UA connection status
+    // Replace with actual API calls in real application
+    opcua_connected := TRUE; // Example: Assume connection is always true for demonstration
+    RETURN opcua_connected;
+END_METHOD
+
+METHOD CheckModbusConnection : BOOL
+BEGIN
+    // Simulate checking Modbus connection status
+    // Replace with actual API calls in real application
+    modbus_connected := TRUE; // Example: Assume connection is always true for demonstration
+    RETURN modbus_connected;
+END_METHOD
+
+METHOD CheckProfinetConnection : BOOL
+BEGIN
+    // Simulate checking Profinet connection status
+    // Replace with actual API calls in real application
+    profinet_connected := TRUE; // Example: Assume connection is always true for demonstration
+    RETURN profinet_connected;
+END_METHOD
+
+METHOD LogAuditTrail : BOOL
+VAR_INPUT
+    protocol_name : STRING[20];
+    reason : STRING[50];
+    error_code : INT;
+END_VAR
+VAR
+    log_entry : STRING[100];
+BEGIN
+    IF NUM_ENTRIES < max_audit_entries THEN
+        NUM_ENTRIES := NUM_ENTRIES + 1;
+        log_entry := CONCAT(protocol_name, ': ', reason, ' (Error Code: ', TO_STRING(error_code), ')');
+        AUDIT_TRAIL[NUM_ENTRIES] := log_entry;
+        RETURN TRUE;
+    ELSE
+        RETURN FALSE;
+    END_IF;
+END_METHOD
+
+METHOD Execute : BOOL
+VAR
+    opcua_status : BOOL;
+    modbus_status : BOOL;
+    profinet_status : BOOL;
+BEGIN
+    IF NOT ENABLE THEN
+        ALARM := FALSE;
+        RETURN FALSE;
+    END_IF;
+
+    opcua_status := CheckOPCUAConnection();
+    modbus_status := CheckModbusConnection();
+    profinet_status := CheckProfinetConnection();
+
+    IF opcua_status <> last_opcua_status THEN
+        last_opcua_status := opcua_status;
+        IF NOT opcua_status THEN
+            ALARM := TRUE;
+            LogAuditTrail('OPC UA', 'Connection lost', 1);
+        END_IF;
+    END_IF;
+
+    IF modbus_status <> last_modbus_status THEN
+        last_modbus_status := modbus_status;
+        IF NOT modbus_status THEN
+            ALARM := TRUE;
+            LogAuditTrail('Modbus', 'Connection lost', 2);
+        END_IF;
+    END_IF;
+
+    IF profinet_status <> last_profinet_status THEN
+        last_profinet_status := profinet_status;
+        IF NOT profinet_status THEN
+            ALARM := TRUE;
+            LogAuditTrail('Profinet', 'Connection lost', 3);
+        END_IF;
+    END_IF;
+
+    RETURN TRUE;
+END_METHOD
+
+END_FUNCTION_BLOCK
+
+
+

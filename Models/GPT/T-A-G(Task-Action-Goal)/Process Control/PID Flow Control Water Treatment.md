@@ -1,5 +1,53 @@
-**PID Flow Control Water Treatment:**
+VAR
+    // Inputs
+    FlowRate        : REAL;            // Optional: flow rate of water (not used in PID directly)
+    Dosing_PV       : REAL;            // Measured chlorine concentration [ppm]
+    Dosing_SP       : REAL := 3.0;     // Setpoint concentration [ppm]
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement PID feedback control for chemical dosing in a water treatment process. The program should regulate the dosing rate of chlorine at 3 ppm, adjusting based on real-time flow measurements with a sampling rate of 100 ms.
+    // PID tuning parameters
+    Kp              : REAL := 2.0;     // Proportional gain
+    Ki              : REAL := 0.5;     // Integral gain
+    Kd              : REAL := 0.1;     // Derivative gain
 
-The control logic should include PID parameters (proportional, integral, and derivative gains) that are tuned for maintaining the desired dosing concentration. Ensure the program accounts for any deviations from the setpoint and adjusts the chemical dosing accordingly, while including safety limits to prevent overdosing or underdosing. Discuss the importance of precise flow control in water treatment, with a focus on maintaining safe and effective chemical levels.
+    // Internal PID state
+    Error           : REAL;
+    Prev_Error      : REAL := 0.0;
+    Integral        : REAL := 0.0;
+    Derivative      : REAL;
+    Dosing_Output   : REAL;
+
+    // Safety limits
+    Min_Dose        : REAL := 0.0;     // Minimum dosing rate
+    Max_Dose        : REAL := 10.0;    // Maximum dosing rate
+
+    // Constants
+    SampleTime      : REAL := 0.1;     // 100 ms control loop
+END_VAR
+
+// -----------------------------
+// PID Control Calculations
+// -----------------------------
+
+// Compute error
+Error := Dosing_SP - Dosing_PV;
+
+// Integral term with accumulation
+Integral := Integral + (Error * SampleTime);
+
+// Derivative term using error difference
+Derivative := (Error - Prev_Error) / SampleTime;
+
+// PID output calculation
+Dosing_Output := (Kp * Error) + (Ki * Integral) + (Kd * Derivative);
+
+// Clamp the dosing output to safety limits
+IF Dosing_Output > Max_Dose THEN
+    Dosing_Output := Max_Dose;
+ELSIF Dosing_Output < Min_Dose THEN
+    Dosing_Output := Min_Dose;
+END_IF;
+
+// Update previous error for next cycle
+Prev_Error := Error;
+
+// Dosing_Output is now ready to be sent to the pump actuator

@@ -1,5 +1,61 @@
-**PID Flow Control Water Treatment:**
+VAR
+    (* Inputs *)
+    FlowRate       : REAL;             (* Measured flow rate [L/min] *)
+    Dosing_PV      : REAL;             (* Measured chlorine concentration [ppm] *)
+    Dosing_SP      : REAL := 3.0;      (* Target chlorine concentration [ppm] *)
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement PID feedback control for chemical dosing in a water treatment process. The program should regulate the dosing rate of chlorine at 3 ppm, adjusting based on real-time flow measurements with a sampling rate of 100 ms.
+    (* PID control variables *)
+    Error          : REAL;             (* Current error [ppm] *)
+    Prev_Error     : REAL := 0.0;      (* Previous error for derivative term [ppm] *)
+    Integral       : REAL := 0.0;      (* Integral term accumulation *)
+    Derivative     : REAL;             (* Derivative term *)
+    Dosing_Output  : REAL;             (* Output to dosing pump [0-10] *)
 
-The control logic should include PID parameters (proportional, integral, and derivative gains) that are tuned for maintaining the desired dosing concentration. Ensure the program accounts for any deviations from the setpoint and adjusts the chemical dosing accordingly, while including safety limits to prevent overdosing or underdosing. Discuss the importance of precise flow control in water treatment, with a focus on maintaining safe and effective chemical levels.
+    (* PID tuning parameters *)
+    Kp             : REAL := 2.0;      (* Proportional gain *)
+    Ki             : REAL := 0.5;      (* Integral gain *)
+    Kd             : REAL := 0.1;      (* Derivative gain *)
+
+    (* Safety limits *)
+    Max_Dose       : REAL := 10.0;     (* Maximum dosing output *)
+    Min_Dose       : REAL := 0.0;      (* Minimum dosing output *)
+
+    (* Timing *)
+    Sample_Time    : TIME := T#100ms;  (* Sampling period *)
+    PID_Timer      : TON;              (* Timer for PID loop *)
+END_VAR
+
+(* Initialize timer for 100 ms sampling *)
+PID_Timer(IN := TRUE, PT := Sample_Time);
+
+(* PID control loop *)
+IF PID_Timer.Q THEN
+    (* Calculate error *)
+    Error := Dosing_SP - Dosing_PV;
+
+    (* Update integral term *)
+    Integral := Integral + Error * 0.1;  (* Sample time = 0.1 s *)
+
+    (* Calculate derivative term *)
+    Derivative := (Error - Prev_Error) / 0.1;  (* Sample time = 0.1 s *)
+
+    (* Calculate PID output *)
+    Dosing_Output := (Kp * Error) + (Ki * Integral) + (Kd * Derivative);
+
+    (* Clamp output to safety limits *)
+    IF Dosing_Output > Max_Dose THEN
+        Dosing_Output := Max_Dose;
+    ELSIF Dosing_Output < Min_Dose THEN
+        Dosing_Output := Min_Dose;
+    END_IF;
+
+    (* Update previous error for next cycle *)
+    Prev_Error := Error;
+
+    (* Reset timer *)
+    PID_Timer(IN := FALSE);
+    PID_Timer(IN := TRUE);
+END_IF;
+
+(* Dosing_Output is sent to the dosing pump *)
+(* Example: Write Dosing_Output to analog output for pump control *)

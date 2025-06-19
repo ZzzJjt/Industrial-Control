@@ -1,6 +1,56 @@
-**PID pH Control:**
+PROGRAM PIDControlIndustrialChemicalProcess
+VAR_INPUT
+    pH_PV : REAL; // Measured pH value
+END_VAR
 
-Develop a self-contained IEC 61131-3 Structured Text program (not a function block) to implement PID feedback control for pH regulation in a process. The program should continuously adjust the addition of acid or base to maintain the pH setpoint, ensuring accurate control in dynamic conditions.
+VAR_OUTPUT
+    Dosing_Output : REAL; // Output to drive the acid/base addition pump (% open)
+END_VAR
 
-Include the PID parameters (proportional, integral, and derivative gains) and the control logic to handle deviations from the target pH. The program should incorporate safeguards to prevent extreme pH levels by setting operational limits for the dosing mechanism. Discuss the challenges of pH control in industrial processes, particularly focusing on system response time, non-linear behavior of pH control, and maintaining process stability under varying input conditions.
+VAR
+    // Setpoint
+    pH_SP : REAL := 7.0; // Target setpoint
+
+    // PID parameters
+    Kp : REAL := 2.5;
+    Ki : REAL := 0.6;
+    Kd : REAL := 0.3;
+
+    // PID state variables
+    Error : REAL;
+    Prev_Error : REAL := 0.0;
+    Integral : REAL := 0.0;
+    Derivative : REAL;
+
+    // Dosing limits (output to pump actuator)
+    Dosing_Min : REAL := 0.0;
+    Dosing_Max : REAL := 100.0;
+
+    // Sampling Time (100 ms)
+    Sample_Time : TIME := T#100ms;
+END_VAR
+
+// PID Control Logic
+Error := pH_SP - pH_PV;
+Integral := Integral + Error * TD_TO_S(Sample_Time);
+Derivative := (Error - Prev_Error) / TD_TO_S(Sample_Time);
+
+Dosing_Output := (Kp * Error) + (Ki * Integral) + (Kd * Derivative);
+
+// Clamp dosing output to safe limits
+IF Dosing_Output > Dosing_Max THEN
+    Dosing_Output := Dosing_Max;
+ELSIF Dosing_Output < Dosing_Min THEN
+    Dosing_Output := Dosing_Min;
+END_IF;
+
+Prev_Error := Error;
+
+// Inline comments explaining the logic:
+// The program implements PID feedback control for regulating the pH in an industrial chemical process.
+// It continuously monitors the measured pH value (pH_PV) and compares it to a defined setpoint (pH_SP).
+// The PID controller calculates the dosing output for the acid/base addition pump using tuned PID gains: Kp, Ki, Kd.
+// Clamping logic ensures the dosing output remains within safe limits (Dosing_Min, Dosing_Max) to prevent over-dosing or pH extremes.
+
+
 

@@ -1,3 +1,93 @@
-**EtherCAT State Machine Control Using IEC 61131-3 Structured Text:**
+(* State enumeration *)
+STATE_INIT : UINT := 1;    (* Initialization state *)
+STATE_PREOP : UINT := 2;   (* Pre-Operational state *)
+STATE_SAFEOP : UINT := 4;  (* Safe-Operational state *)
+STATE_OP : UINT := 8;      (* Operational state *)
 
-Develop an IEC 61131-3 structured text (ST) program to sequentially transition through all the states of an EtherCAT slave device using the ESM (EtherCAT State Machine) function block. The program should use descriptive state names (such as INIT, PREOP, SAFEOP, OP, etc.) rather than numerical values, ensuring that state transitions occur only when allowed. A 5-second timer delay should be implemented before each state transition to ensure proper timing and stabilization. Discuss the implementation of the EtherCAT state machine, including logic for handling state transitions, error checking, and ensuring compliance with EtherCAT protocol requirements.
+(* Program control variables *)
+CurrentState : UINT;       (* Current ESM state *)
+TargetState : UINT;        (* Desired next state *)
+StateTransition : BOOL;    (* Trigger for state change *)
+TransitionError : BOOL;    (* TRUE if transition fails *)
+ErrorCode : UINT;          (* Error code: 0=None, 1=Invalid Transition, 2=Timeout, 3=Communication Error *)
+
+(* Timer for 5-second stabilization delay *)
+StabilizeTimer : TON;      (* Timer for delay *)
+STABILIZE_DELAY : TIME := T#5s; (* 5-second delay *)
+
+(* Control flags *)
+StartTransition : BOOL;    (* Initiate state transition *)
+TransitionComplete : BOOL; (* Transition successfully completed *)
+AllStatesReached : BOOL;   (* TRUE when OP state is reached *)
+
+
+(* Set target state based on current state *)
+IF StartTransition AND NOT StabilizeTimer.Q THEN
+    CASE CurrentState OF
+        0, STATE_INIT:
+            TargetState := STATE_PREOP;
+            StateTransition := TRUE;
+        STATE_PREOP:
+            TargetState := STATE_SAFEOP;
+            StateTransition := TRUE;
+        STATE_SAFEOP:
+            TargetState := STATE_OP;
+            StateTransition := TRUE;
+        STATE_OP:
+            AllStatesReached := TRUE;
+            StateTransition := FALSE;
+        ELSE
+            (* Invalid or unexpected state *)
+            TransitionError := TRUE;
+            ErrorCode := 1; (* Invalid Transition *)
+            StateTransition := FALSE;
+    END_CASE
+END_IF
+
+(* Validate transition *)
+IF StateTransition THEN
+    (* Check if transition is allowed per EtherCAT spec *)
+    IF (CurrentState = STATE_INIT AND TargetState = STATE_PREOP) OR
+       (CurrentState = STATE_PREOP AND TargetState = STATE_SAFEOP) OR
+       (CurrentState = STATE_SAFEOP AND TargetState = STATE_OP) THEN
+        (* Trigger ESM state change *)
+        ESM(TargetState := TargetState, Execute := TRUE);
+        
+        (* Check ESM status *)
+        IF ESM.Error THEN
+            TransitionError := TRUE;
+            ErrorCode := 3; (* Communication Error *)
+            StateTransition := FALSE;
+            ESM(Execute := FALSE);
+        ELSIF ESM.Done THEN
+            (* Transition successful, start stabilization timer *)
+            StabilizeTimer(IN := TRUE, PT := STABILIZE_DELAY);
+            TransitionComplete := TRUE;
+            ESM(Execute := FALSE);
+            StateTransition := FALSE;
+        ELSIF ESM.Timeout THEN
+            (* Transition timed out *)
+            TransitionError := TRUE;
+            ErrorCode := 2; (* Timeout *)
+            StateTransition := FALSE;
+            ESM(Execute := FALSE);
+        END_IF
+    ELSE
+        (* Invalid transition *)
+        TransitionError := TRUE;
+        ErrorCode := 1; (* Invalid Transition *)
+        StateTransition := FALSE;
+    END_IF
+END_IF
+
+(* Handle stabilization delay *)
+IF TransitionComplete AND StabilizeTimer.Q THEN
+    (* Reset for next transition *)
+    TransitionComplete := FALSE;
+    StabilizeTimer(IN := FALSE);
+    StartTransition := FALSE;
+    (* Trigger next transition *)
+    IF CurrentState <> STATE_OP THEN
+        StartTransition := TRUE;
+    END_IF
+END_IF

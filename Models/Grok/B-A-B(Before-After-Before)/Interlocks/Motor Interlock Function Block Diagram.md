@@ -1,8 +1,32 @@
-**Motor Interlock Function Block Diagram:**
+(* Function Block: MotorInterlock
+   Purpose: Implements a motor interlock to prevent startup when associated equipment is running.
+   Features:
+   - Monitors three equipment status inputs (Equipment1Running, Equipment2Running, Equipment3Running)
+   - Sets AllowStart output to TRUE only when all equipment is stopped
+   - Prevents mechanical conflicts and ensures safe motor startup sequencing
+   Function Block Diagram Description:
+   +-------------------+
+   |   MotorInterlock  |
+   |-------------------|
+   | Equipment1Running |--> [AND] --> AllowStart
+   | Equipment2Running |--> [NOT] --|
+   | Equipment3Running |--> [NOT] --|
+   +-------------------+
+   - Inputs are inverted (NOT) to check for stopped state
+   - AND logic ensures all equipment must be stopped for AllowStart := TRUE
+*)
 
-Design a motor interlock as a function block diagram that prevents the motor from starting while other associated equipment is still running. The interlock should monitor the operational status of surrounding equipment and block the motor start command if any equipment is still active. Include inputs from sensors or status indicators and outputs that control the motor start circuit.
+FUNCTION_BLOCK MotorInterlock
+VAR_INPUT
+    Equipment1Running : BOOL;    (* TRUE if equipment 1 is running *)
+    Equipment2Running : BOOL;    (* TRUE if equipment 2 is running *)
+    Equipment3Running : BOOL;    (* TRUE if equipment 3 is running *)
+END_VAR
+VAR_OUTPUT
+    AllowStart : BOOL;           (* TRUE to allow motor startup *)
+END_VAR
 
-Provide the implementation of the MotorInterlock function block in IEC 61131-3 Structured Text. This function block should check the statuses of relevant equipment (e.g., EquipmentRunning), and if all equipment is stopped, it should allow the motor to start by setting the output to TRUE. If any equipment is still running, the output should remain FALSE, preventing the motor from starting.
+(* Interlock logic *)
+AllowStart := NOT Equipment1Running AND NOT Equipment2Running AND NOT Equipment3Running;
 
-Discuss the role of motor interlocks in industrial safety and how this logic prevents premature or unsafe motor operation.
-
+END_FUNCTION_BLOCK

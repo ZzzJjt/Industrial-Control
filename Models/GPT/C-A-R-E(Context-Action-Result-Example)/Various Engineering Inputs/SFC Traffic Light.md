@@ -1,4 +1,25 @@
-**SFC Traffic Light:**
-
-Create a 61131-3 sequential function chart in ASCII art for a traffic light. Include proper delays for switching the lights.
-
+     +------------------+
+     |    Step 1        |
+     |  GREEN Light ON  |
+     +------------------+
+              |
+              |  TON tGreen (PT := T#5s)
+              |----[ tGreen.Q ]
+              V
+     +------------------+
+     |    Step 2        |
+     | YELLOW Light ON  |
+     +------------------+
+              |
+              |  TON tYellow (PT := T#2s)
+              |----[ tYellow.Q ]
+              V
+     +------------------+
+     |    Step 3        |
+     |   RED Light ON   |
+     +------------------+
+              |
+              |  TON tRed (PT := T#5s)
+              |----[ tRed.Q ]
+              V
+         (Loop Back to Step 1)

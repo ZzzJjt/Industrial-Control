@@ -1,7 +1,36 @@
-**Feedforward Control Conveyor:**
+PROGRAM FeedforwardControlConveyor
+VAR_INPUT
+    Predicted_Load : REAL; // Load from upstream sensor (e.g., kg)
+END_VAR
 
-Develop a self-contained IEC 61131-3 Structured Text program (not a function block) to implement feedforward control for adjusting the speed of a conveyor belt based on sensor-predicted load changes. The program should use input from sensors that predict the weight or volume of material entering the conveyor system, allowing for real-time adjustments to the belt speed before a load change occurs.
+VAR_OUTPUT
+    Conveyor_Speed : REAL; // Output speed to drive the conveyor motor (m/s)
+END_VAR
 
-Include logic that calculates the required conveyor speed based on the predicted load and adjusts the motor speed accordingly, ensuring that the conveyor operates efficiently without overloading or underloading. Discuss the benefits of feedforward control in conveyor systems, particularly in reducing delays and improving response times compared to feedback-only control strategies.
+VAR
+    Base_Speed : REAL := 1.0; // Minimum conveyor speed (m/s)
+    Max_Load : REAL := 100.0; // Load scaling reference (kg)
+    Gain_FF : REAL := 0.02;   // Feedforward gain (speed per kg)
+    Desired_Speed : REAL;
+END_VAR
+
+// Feedforward speed calculation
+Desired_Speed := Base_Speed + Gain_FF * Predicted_Load;
+
+// Clamp speed to operational limits
+IF Desired_Speed > 2.0 THEN
+    Conveyor_Speed := 2.0;
+ELSIF Desired_Speed < 0.5 THEN
+    Conveyor_Speed := 0.5;
+ELSE
+    Conveyor_Speed := Desired_Speed;
+END_IF;
+
+// Inline comments explaining the logic:
+// The program implements feedforward control for regulating conveyor belt speed.
+// It receives real-time input from a load prediction sensor and calculates the desired speed using a feedforward gain.
+// The calculated speed is then clamped to ensure it remains within safe operational limits.
+// This approach enables preemptive speed adjustment, improving efficiency and reducing mechanical wear.
+
 
 

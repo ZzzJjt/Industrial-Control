@@ -1,7 +1,56 @@
-**Interlock Pressure Relief:**
+(* === Pressure Relief Interlock System === *)
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement an interlock system for opening a pressure relief valve in a vessel upon detecting overpressure. The program should monitor the vessel pressure using a pressure sensor and trigger the opening of the relief valve when the pressure exceeds a predefined safe limit.
+VAR_INPUT
+    PT_VALUE        : REAL;   // Current pressure reading (bar)
+    SENSOR_VALID    : BOOL;   // TRUE if the pressure sensor is working properly
+    VALVE_FEEDBACK  : BOOL;   // TRUE if the valve is physically confirmed open
+END_VAR
 
-The logic should ensure that the pressure relief valve remains open until the vessel pressure drops below a safe threshold. Additionally, incorporate safety checks to account for sensor failures or valve malfunctions, ensuring that the system defaults to a safe state in the event of a fault. Discuss the significance of pressure relief systems in protecting industrial processes from overpressure hazards and ensuring operational safety.
+VAR_OUTPUT
+    RELIEF_VALVE    : BOOL := FALSE;  // TRUE = Open, FALSE = Closed
+    SHUTDOWN_LATCH  : BOOL := FALSE;  // Latches if overpressure or sensor fails
+    SENSOR_FAULT    : BOOL := FALSE;  // TRUE if sensor is invalid
+    VALVE_FAULT     : BOOL := FALSE;  // TRUE if valve did not respond as expected
+    ALARM           : BOOL := FALSE;  // Operator alarm flag
+END_VAR
 
+VAR CONSTANT
+    PRESSURE_HIGH_LIMIT  : REAL := 15.0;   // Pressure to open relief valve (bar)
+    PRESSURE_RESET_LIMIT : REAL := 12.0;   // Pressure to close relief valve (bar)
+END_VAR
 
+// === Sensor Fault Detection ===
+IF NOT SENSOR_VALID THEN
+    SENSOR_FAULT := TRUE;
+    SHUTDOWN_LATCH := TRUE;  // Trigger protection if sensor is faulty
+ELSE
+    SENSOR_FAULT := FALSE;
+END_IF
+
+// === Overpressure Protection Logic ===
+IF SENSOR_VALID THEN
+    IF PT_VALUE >= PRESSURE_HIGH_LIMIT THEN
+        SHUTDOWN_LATCH := TRUE;
+    ELSIF (PT_VALUE <= PRESSURE_RESET_LIMIT) AND (NOT SENSOR_FAULT) THEN
+        SHUTDOWN_LATCH := FALSE;
+    END_IF
+END_IF
+
+// === Relief Valve Control ===
+IF SHUTDOWN_LATCH THEN
+    RELIEF_VALVE := TRUE;   // Open the valve
+ELSE
+    RELIEF_VALVE := FALSE;  // Close the valve
+END_IF
+
+// === Valve Fault Detection ===
+IF RELIEF_VALVE AND NOT VALVE_FEEDBACK THEN
+    VALVE_FAULT := TRUE;
+    ALARM := TRUE;
+ELSIF NOT RELIEF_VALVE AND VALVE_FEEDBACK THEN
+    VALVE_FAULT := TRUE;
+    ALARM := TRUE;
+ELSE
+    VALVE_FAULT := FALSE;
+    ALARM := FALSE;
+END_IF

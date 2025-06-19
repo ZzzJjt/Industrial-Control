@@ -1,7 +1,79 @@
-**Feedforward Control Conveyor:**
+FUNCTION_BLOCK FB_ConveyorFeedforwardControl
+VAR_INPUT
+    // Predicted load from upstream sensor (kg or volume units)
+    Predicted_Load : REAL;
 
-Develop a self-contained IEC 61131-3 Structured Text program (not a function block) to implement feedforward control for adjusting the speed of a conveyor belt based on sensor-predicted load changes. The program should use input from sensors that predict the weight or volume of material entering the conveyor system, allowing for real-time adjustments to the belt speed before a load change occurs.
+    // Base conveyor speed (m/s)
+    Base_Speed : REAL := 1.0;
 
-Include logic that calculates the required conveyor speed based on the predicted load and adjusts the motor speed accordingly, ensuring that the conveyor operates efficiently without overloading or underloading. Discuss the benefits of feedforward control in conveyor systems, particularly in reducing delays and improving response times compared to feedback-only control strategies.
+    // Feedforward gain (speed adjustment per unit load)
+    Gain_FF : REAL := 0.02;
+END_VAR
 
+VAR_OUTPUT
+    // Calculated conveyor speed to send to motor controller (m/s)
+    Conveyor_Speed : REAL;
+END_VAR
 
+VAR
+    // Internal logic variables
+    Temp_Speed : REAL;
+END_VAR
+
+// --- STEP 1: Calculate Conveyor Speed Using Feedforward Control ---
+Temp_Speed := Base_Speed + Gain_FF * Predicted_Load;
+
+// --- STEP 2: Limit Speed to Safe Operational Bounds ---
+IF Temp_Speed > 2.0 THEN
+    Conveyor_Speed := 2.0; // Max speed limit
+ELSIF Temp_Speed < 0.5 THEN
+    Conveyor_Speed := 0.5; // Min speed limit
+ELSE
+    Conveyor_Speed := Temp_Speed;
+END_IF;
+
+// The Conveyor_Speed variable now contains the adjusted speed value that can be sent to the motor controller.
+
+PROGRAM PLC_PRG
+VAR
+    ConveyorCtrl : FB_ConveyorFeedforwardControl;
+
+    // Simulated Inputs
+    UpstreamLoadPrediction : REAL := 50.0; // Example predicted load value
+
+    // Output
+    MotorControllerCommand : REAL;
+END_VAR
+
+// Call the function block
+ConveyorCtrl(
+    Predicted_Load := UpstreamLoadPrediction,
+    Base_Speed := 1.0,
+    Gain_FF := 0.02,
+
+    Conveyor_Speed => MotorControllerCommand
+);
+
+// Now, MotorControllerCommand holds the calculated conveyor speed to be sent to the motor controller.
+
+PROGRAM PLC_PRG
+VAR
+    ConveyorCtrl : FB_ConveyorFeedforwardControl;
+
+    // Simulated Inputs
+    UpstreamLoadPrediction : REAL := 50.0; // Example predicted load value
+
+    // Output
+    MotorControllerCommand : REAL;
+END_VAR
+
+// Call the function block
+ConveyorCtrl(
+    Predicted_Load := UpstreamLoadPrediction,
+    Base_Speed := 1.0,
+    Gain_FF := 0.02,
+
+    Conveyor_Speed => MotorControllerCommand
+);
+
+// Now, MotorControllerCommand holds the calculated conveyor speed to be sent to the motor controller.

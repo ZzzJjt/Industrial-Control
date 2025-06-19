@@ -1,12 +1,65 @@
-**Shutdown Steel Production:**
+// IEC 61131-3 Structured Text: Steel Facility Shutdown Control (Steps 4–6)
 
-Develop a comprehensive list of steps for the controlled shutdown of a steel production facility. Include key stages such as reducing furnace temperature, controlling gas flow rates, and maintaining safe oxygen levels throughout the shutdown process.
+VAR
+    CurrentTemp         : REAL;    // Current furnace temperature (°C)
+    TargetTemp          : REAL := 400.0;  // Safe shutdown temperature
+    FuelGasFlow         : REAL;    // Current gas flow rate (Nm^3/h)
+    TargetFuelFlow      : REAL := 0.0;
+    MaxFuelFlow         : REAL := 100.0;  // Initial maximum fuel gas flow
+    OxygenFlow          : REAL;    // Current oxygen supply
+    FuelToAirRatio      : REAL := 2.5; // 1:2.5 target ratio (Fuel:Air)
 
-Provide a detailed control narrative for steps 4 to 6 of the shutdown sequence, specifying concrete ranges and setpoints for variables such as temperature, gas flow, and oxygen levels.
+    RampStartTime       : TIME;
+    RampDuration        : TIME := T#12h0m0s;
+    RampActive          : BOOL := FALSE;
+    ShutdownStep        : INT := 4;
 
-Write a self-contained IEC 61131-3 Structured Text program based on this control narrative, ensuring proper sequencing and safety protocols.
+    Timer               : TON;
+    CurrentTime         : TIME;
+    ElapsedTime         : TIME;
 
-Additionally, create a function in IEC 61131-3 to gradually reduce the fuel gas flow rate to the furnace burners over a period of 12 hours. This function should incorporate timing and safety checks to ensure smooth transitions.
+    Fault               : BOOL;
+END_VAR
 
-Lastly, write an IEC 61131-3 function for adjusting the oxygen supply to the burners to maintain a precise fuel-to-air ratio of 1:2.5 during the shutdown. Ensure the function is adaptable to fluctuations in gas flow and temperature, and include safeguards for maintaining combustion efficiency.
+// Step 4: Begin temperature reduction and start fuel ramp-down
+IF ShutdownStep = 4 THEN
+    IF NOT RampActive THEN
+        RampStartTime := CURRENT_TIME;
+        RampActive := TRUE;
+    END_IF
 
+    // Calculate elapsed time since ramp started
+    ElapsedTime := CURRENT_TIME - RampStartTime;
+    IF ElapsedTime < RampDuration THEN
+        FuelGasFlow := MaxFuelFlow * (1.0 - (REAL_TO_TIME(ElapsedTime) / REAL_TO_TIME(RampDuration)));
+    ELSE
+        FuelGasFlow := TargetFuelFlow;
+    END_IF
+
+    // Check if temperature < 400°C to proceed
+    IF CurrentTemp < TargetTemp THEN
+        ShutdownStep := 5;
+    END_IF
+END_IF
+
+// Step 5: Adjust oxygen for safe combustion ratio
+IF ShutdownStep = 5 THEN
+    OxygenFlow := FuelGasFlow * FuelToAirRatio;
+
+    // Check for safe oxygen range (arbitrary bounds 50–300 Nm^3/h)
+    IF (OxygenFlow < 50.0) OR (OxygenFlow > 300.0) THEN
+        Fault := TRUE; // Trigger interlock
+    END_IF
+
+    // Proceed when fuel is minimal and oxygen is balanced
+    IF FuelGasFlow <= 1.0 AND NOT Fault THEN
+        ShutdownStep := 6;
+    END_IF
+END_IF
+
+// Step 6: Confirm shutdown complete
+IF ShutdownStep = 6 THEN
+    FuelGasFlow := 0.0;
+    OxygenFlow := 0.0;
+    // Optional: Set facility status flag or log completion
+END_IF

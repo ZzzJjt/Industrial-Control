@@ -1,8 +1,98 @@
-**3D Pouch Making Machine:**
+PROGRAM PLC_PRG
+VAR
+    // System Control Flags
+    bMachineReady         : BOOL := FALSE;
+    bStartSequence        : BOOL := FALSE;
+    bShutdownRequested    : BOOL := FALSE;
 
-Design a detailed start-up and shutdown sequence for a 3D pouch making machine in IEC 61131-3 Structured Text. The machine consists of 8 heating stations, 8 cooling stations, one horizontal cutter, one vertical cutter, and two feeder units responsible for raw material feeding. Winding tension management is critical throughout the process to ensure proper tension in the raw material.
+    // Heating Stations
+    aHeaterActive         : ARRAY [1..8] OF BOOL := [FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE];
+    aHeaterAtTemp         : ARRAY [1..8] OF BOOL := [FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE];
 
-Write a structured start-up sequence that sequentially activates the heating and cooling stations, regulates the feeder units to maintain optimal tension, and ensures proper synchronization between the cutters and material flow. Additionally, create a shutdown sequence that safely deactivates each component in the correct order, ensuring proper cooling and tension release.
+    // Cooling Stations
+    aCoolerActive         : ARRAY [1..8] OF BOOL := [FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE];
 
-Ensure the program includes typical parameter values, timers, and conditions for each stage of the start-up and shutdown procedures, and discuss the importance of winding tension in maintaining machine efficiency and product quality.
+    // Cutters
+    bHorizontalCutterOn   : BOOL := FALSE;
+    bVerticalCutterOn     : BOOL := FALSE;
 
+    // Feeder Units
+    rTensionA             : REAL := 0.0;  // Measured tension
+    rTensionB             : REAL := 0.0;
+    bFeederAActive        : BOOL := FALSE;
+    bFeederBActive        : BOOL := FALSE;
+
+    // Timers
+    tmrStartup            : TON;
+    tmrCooldown           : TON;
+    tmrTensionRelease     : TON;
+
+    // State Machine
+    eState                : E_MACHINE_STATE := STATE_IDLE;
+    eNextState            : E_MACHINE_STATE := STATE_IDLE;
+
+    // Parameters
+    rMinTension           : REAL := 5.0;  // Minimum acceptable tension (N)
+    rMaxTension           : REAL := 15.0; // Maximum safe tension (N)
+END_VAR
+
+CASE eState OF
+    STATE_IDLE:
+        IF bStartSequence THEN
+            eNextState := STATE_STARTUP_SEQUENCE;
+            tmrStartup(IN := TRUE, PT := T#5s); // Delay before starting heaters
+        END_IF;
+
+    STATE_STARTUP_SEQUENCE:
+        TurnOnAllHeaters();
+        eNextState := STATE_WAIT_FOR_TEMP;
+
+    STATE_WAIT_FOR_TEMP:
+        IF AllHeatersAtTemp() THEN
+            eNextState := STATE_FEEDER_START;
+        END_IF;
+
+    STATE_FEEDER_START:
+        StartFeedersWithTensionControl();
+        eNextState := STATE_CUTTER_SYNC;
+
+    STATE_CUTTER_SYNC:
+        SyncCuttersWithMaterial();
+        eNextState := STATE_RUNNING;
+
+    STATE_RUNNING:
+        bMachineReady := TRUE;
+
+    STATE_SHUTDOWN_SEQUENCE:
+        StopCutters();
+        eNextState := STATE_COOL_DOWN;
+
+    STATE_COOL_DOWN:
+        TurnOffAllCoolersAfterDelay(T#30s);
+        eNextState := STATE_TENSION_RELEASE;
+
+    STATE_TENSION_RELEASE:
+        ReleaseTensionGradually(T#10s);
+        eNextState := STATE_FINAL_STOP;
+
+    STATE_FINAL_STOP:
+        StopAllSystems();
+        eNextState := STATE_IDLE;
+END_CASE;
+
+// Advance state if timer or condition is met
+IF tmrStartup.Q THEN
+    tmrStartup(IN := FALSE);
+    eState := eNextState;
+END_IF;
+
+METHOD StartFeedersWithTensionControl
+bFeederAActive := TRUE;
+bFeederBActive := TRUE;
+
+// Ensure tension stays within limits
+IF rTensionA < rMinTension OR rTensionB < rMinTension THEN
+    RaiseLowTensionAlarm();
+ELSIF rTensionA > rMaxTension OR rTensionB > rMaxTension THEN
+    RaiseHighTensionAlarm();
+END_IF;

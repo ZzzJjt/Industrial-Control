@@ -1,4 +1,15 @@
-**Heating System Control Using 61131-3 Structured Text:**
+Cause / Effect                  | Compute AvgTemp | Set SensorFault | Turn Heating On | Turn Heating Off | Set Error | Log Event
+--------------------------------|-----------------|-----------------|-----------------|------------------|-----------|-----------
+Valid Sensor Readings (10–30°C)  | X               |                 | X (if AvgTemp < 20) | X (if AvgTemp > 22) |           | X
+Sensor Out of Range (<10 or >30) | X               | X               |                 | X                |           | X
+Invalid Input (NaN, >1E6)       |                 | X               |                 | X                | X (1)     | X
+AvgTemp in Range (20–22°C)      | X               |                 |                 |                  |           | X
+Sensor Fault (Extendable)       |                 | X               |                 | X                | X (2)     | X
 
-Write a self-contained 61131-3 structured text program (not a function block) to control the temperature of a heating system. The system should use input from three temperature sensors to automatically turn the heating on and off, maintaining a constant temperature range between 20°C and 22°C. The program must ensure smooth temperature regulation and prioritize energy efficiency by minimizing frequent switching. Safety measures should be implemented to handle sensor faults or temperature deviations beyond the specified range.
-
+Legend:
+- Compute AvgTemp: Calculates average of TempSensor1, TempSensor2, TempSensor3
+- Set SensorFault: Sets SensorFault := TRUE
+- Turn Heating On: Sets HeatingOn := TRUE
+- Turn Heating Off: Sets HeatingOn := FALSE
+- Set Error: Sets Error := TRUE, ErrorID
+- Log Event: Records event to AuditMessage

@@ -1,7 +1,73 @@
-**Interlock Safety Doors:**
+PROGRAM PLC_PRG
+VAR
+    // Inputs - Safety Door Status
+    DOOR_1_CLOSED: BOOL := TRUE;   // TRUE = Closed, FALSE = Open
+    DOOR_2_CLOSED: BOOL := TRUE;
+    DOOR_3_CLOSED: BOOL := TRUE;
 
-Develop a self-contained IEC 61131-3 Structured Text program to implement interlocks for safety doors in a chemical reactor. The program should monitor the status of the safety doors and ensure that the reactor remains in a safe state whenever any door is open.
+    // Inputs - Operator Controls
+    START_BUTTON: BOOL := FALSE;
+    RESET_BUTTON: BOOL := FALSE;
 
-The interlock logic should prevent the reactor from starting or continuing operation if any safety door is not securely closed. Additionally, if a safety door is opened during reactor operation, the program should immediately trigger an emergency shutdown sequence, including deactivating the reactor and stopping any hazardous processes.
+    // Internal Flags
+    ALL_DOORS_CLOSED: BOOL := TRUE;
+    DOORS_CHECKED_AT_STARTUP: BOOL := FALSE;
+    EMERGENCY_SHUTDOWN: BOOL := FALSE;
+    SYSTEM_RESET: BOOL := FALSE;
 
-This interlock ensures that the reactor only operates when all safety doors are securely closed, providing an essential safeguard against accidental exposure to hazardous conditions. Discuss the importance of safety door interlocks in preventing operator access to dangerous environments and ensuring compliance with safety standards in chemical processing.
+    // Outputs - Reactor Operation
+    ReactorRunning: BOOL := FALSE;
+    Heater_ON: BOOL := FALSE;
+    Stirrer_ON: BOOL := FALSE;
+    FeedPump_ON: BOOL := FALSE;
+
+    // Alarms
+    DoorOpenAlarm: BOOL := FALSE;
+END_VAR
+
+// --- Door Monitoring Logic ---
+ALL_DOORS_CLOSED := DOOR_1_CLOSED AND DOOR_2_CLOSED AND DOOR_3_CLOSED;
+
+// --- Startup Interlock Logic ---
+IF NOT DOORS_CHECKED_AT_STARTUP THEN
+    IF NOT ALL_DOORS_CLOSED THEN
+        DoorOpenAlarm := TRUE;
+        ALLOW_START := FALSE;
+    ELSE
+        DoorOpenAlarm := FALSE;
+        DOORS_CHECKED_AT_STARTUP := TRUE;
+    END_IF;
+END_IF;
+
+// --- Emergency Shutdown on Door Opening During Operation ---
+IF ReactorRunning AND NOT ALL_DOORS_CLOSED THEN
+    EMERGENCY_SHUTDOWN := TRUE;
+    ReactorRunning := FALSE;
+    DoorOpenAlarm := TRUE;
+END_IF;
+
+// --- Reset Logic ---
+IF RESET_BUTTON AND EMERGENCY_SHUTDOWN THEN
+    IF ALL_DOORS_CLOSED THEN
+        EMERGENCY_SHUTDOWN := FALSE;
+        SYSTEM_RESET := TRUE;
+        DoorOpenAlarm := FALSE;
+    END_IF;
+END_IF;
+
+// --- Reactor Start Logic ---
+IF START_BUTTON AND ALL_DOORS_CLOSED AND SYSTEM_RESET AND NOT EMERGENCY_SHUTDOWN THEN
+    ReactorRunning := TRUE;
+    Heater_ON := TRUE;
+    Stirrer_ON := TRUE;
+    FeedPump_ON := TRUE;
+    SYSTEM_RESET := FALSE;
+    DOORS_CHECKED_AT_STARTUP := FALSE;
+END_IF;
+
+// --- Emergency Shutdown Actions ---
+IF EMERGENCY_SHUTDOWN THEN
+    Heater_ON := FALSE;
+    Stirrer_ON := FALSE;
+    FeedPump_ON := FALSE;
+END_IF;
